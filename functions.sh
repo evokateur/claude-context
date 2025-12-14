@@ -128,15 +128,15 @@ cc-copy() {
     echo "Claude context directory: $claude_context_dir"
     echo "All checks passed!"
 
-    if [ -d "$local_context_path" ]; then
-        cc-backup
-        echo ""
-    fi
-
     if [ "$dry_run" = true ]; then
+        echo ""
         echo "Dry run - showing what would be transferred:"
         rsync -av --delete --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
     else
+        if [ -d "$local_context_path" ]; then
+            cc-backup
+            echo ""
+        fi
         echo "Syncing from $from_machine..."
         rsync -av --delete "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
         echo "Sync complete!"
