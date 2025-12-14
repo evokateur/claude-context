@@ -112,9 +112,9 @@ copy_cc_from() {
         return 1
     fi
 
-    if [ ! -d "$local_context_path" ]; then
-        echo "Error: Claude context directory does not exist on this machine"
-        echo "Expected path: $local_context_path"
+    if [ ! -d "$HOME/.claude/projects" ]; then
+        echo "Error: $HOME/.claude/projects directory does not exist"
+        echo "Is Claude Code installed?"
         return 1
     fi
 
@@ -136,9 +136,11 @@ copy_cc_from() {
     echo "Claude context directory: $claude_context_dir"
     echo "All checks passed!"
 
-    backup_cc
+    if [ -d "$local_context_path" ]; then
+        backup_cc
+        echo ""
+    fi
 
-    echo ""
     if [ "$dry_run" = true ]; then
         echo "Dry run - showing what would be transferred:"
         rsync -av --delete --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
