@@ -49,13 +49,59 @@ restore_cc() {
     echo "Restore complete!"
 }
 
+push_cc() {
+    backup_cc
+}
+
+pop_cc() {
+    get_context_vars
+    latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
+
+    if [ -z "$latest_backup" ]; then
+        echo "Error: No backups found for $claude_context_dir"
+        return 1
+    fi
+
+    echo "Restoring from: $latest_backup"
+
+    if [ -d "$local_context_path" ]; then
+        echo "Removing current context directory..."
+        rm -rf "$local_context_path"
+    fi
+
+    echo "Extracting backup..."
+    tar zxf "$latest_backup" -C "$HOME/.claude/projects/"
+
+    echo "Removing backup: $latest_backup"
+    rm "$latest_backup"
+
+    echo "Pop complete!"
+}
+
 copy_cc_from() {
     get_context_vars
-    from_machine="$1"
+
+    dry_run=false
+    from_machine=""
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        *)
+            from_machine="$1"
+            shift
+            ;;
+        esac
+    done
+
+    dry_run=true # HIJACKED: always set to true for now
 
     if [ -z "$from_machine" ]; then
         echo "Error: from_machine argument is required"
-        echo "Usage: copy_cc_from <machine-name>"
+        echo "Usage: copy_cc_from [--dry-run] <machine-name>"
         return 1
     fi
 
@@ -93,6 +139,12 @@ copy_cc_from() {
     backup_cc
 
     echo ""
-    echo "Dry run - showing what would be transferred:"
-    rsync -av --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+    if [ "$dry_run" = true ]; then
+        echo "Dry run - showing what would be transferred:"
+        rsync -av --delete --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+    else
+        echo "Syncing from $from_machine..."
+        rsync -av --delete "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+        echo "Sync complete!"
+    fi
 }
