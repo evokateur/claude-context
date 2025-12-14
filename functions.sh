@@ -82,7 +82,7 @@ cc-copy() {
     get_context_vars || return 1
 
     dry_run=false
-    from_machine=""
+    remote_host=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -91,33 +91,26 @@ cc-copy() {
             shift
             ;;
         *)
-            from_machine="$1"
+            remote_host="$1"
             shift
             ;;
         esac
     done
 
-    if [ -z "$from_machine" ]; then
-        echo "Error: from_machine argument is required"
-        echo "Usage: cc-copy [--dry-run] <machine-name>"
+    if [ -z "$remote_host" ]; then
+        echo "Error: remote host argument is required"
+        echo "Usage: cc-copy [--dry-run] <remote-host>"
         return 1
     fi
 
-    this_machine=$(hostname -s)
-
-    if [ "$from_machine" = "$this_machine" ]; then
-        echo "Error: from_machine ($from_machine) is the same as this machine"
-        return 1
-    fi
-
-    echo "Checking SSH connectivity to $from_machine..."
-    if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$from_machine" exit 2>/dev/null; then
-        echo "Error: Cannot connect to $from_machine over SSH"
+    echo "Checking SSH connectivity to $remote_host..."
+    if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$remote_host" exit 2>/dev/null; then
+        echo "Error: Cannot connect to $remote_host over SSH"
         return 1
     fi
 
     echo "Detecting remote home directory..."
-    remote_home=$(ssh "$from_machine" "echo \$HOME" 2>/dev/null)
+    remote_home=$(ssh "$remote_host" "echo \$HOME" 2>/dev/null)
     if [ -z "$remote_home" ]; then
         echo "Error: Could not determine remote home directory"
         return 1
@@ -127,29 +120,29 @@ cc-copy() {
     remote_full_path="${remote_home}/${relative_path}"
     remote_context_dir=$(echo "$remote_full_path" | sed 's/\//-/g')
 
-    echo "Checking if Claude context directory exists on $from_machine..."
+    echo "Checking if Claude context directory exists on $remote_host..."
     remote_path="${remote_home}/.claude/projects/$remote_context_dir"
-    if ! ssh "$from_machine" "test -d $remote_path" 2>/dev/null; then
-        echo "Error: Claude context directory does not exist on $from_machine"
+    if ! ssh "$remote_host" "test -d $remote_path" 2>/dev/null; then
+        echo "Error: Claude context directory does not exist on $remote_host"
         echo "Expected path: $remote_path"
         return 1
     fi
 
-    echo "From machine: $from_machine"
+    echo "From machine: $remote_host"
     echo "Claude context directory: $claude_context_dir"
     echo "All checks passed!"
 
     if [ "$dry_run" = true ]; then
         echo ""
         echo "Dry run - showing what would be transferred:"
-        rsync -av --delete --dry-run "${from_machine}:${remote_path}/" "${local_context_path}/"
+        rsync -av --delete --dry-run "${remote_host}:${remote_path}/" "${local_context_path}/"
     else
         if [ -d "$local_context_path" ]; then
             cc-backup
             echo ""
         fi
-        echo "Syncing from $from_machine..."
-        rsync -av --delete "${from_machine}:${remote_path}/" "${local_context_path}/"
+        echo "Syncing from $remote_host..."
+        rsync -av --delete "${remote_host}:${remote_path}/" "${local_context_path}/"
         echo "Sync complete!"
     fi
 }
