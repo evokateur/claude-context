@@ -1,6 +1,6 @@
 # Claude Code project context sync and backup
 
-Shell functions for rsyncing Claude Code project context from remote machines and managing local backups.
+Shell functions for copying Claude Code project context from remote machines and managing local backups.
 
 ## Functions
 
