@@ -1,4 +1,4 @@
-get_context_vars() {
+set_vars() {
     if [ ! -d "$HOME/.claude/projects" ]; then
         echo "Error: $HOME/.claude/projects directory does not exist"
         echo "Is Claude Code installed?"
@@ -11,7 +11,7 @@ get_context_vars() {
     local_context_path="$HOME/.claude/projects/$local_context_dir"
 }
 
-get_remote_context_path() {
+set_remote_context_path() {
     remote_host="$1"
     relative_path="$2"
 
@@ -41,7 +41,7 @@ get_remote_context_path() {
 }
 
 cc-backup() {
-    get_context_vars || return 1
+    set_vars || return 1
     if [ ! -d "$local_context_path" ]; then
         echo "Error: Claude context directory does not exist on this machine"
         echo "Expected path: $local_context_path"
@@ -60,8 +60,14 @@ cc-backup() {
     echo "$backup_file"
 }
 
-cc-restore() {
-    get_context_vars || return 1
+cc-pop() {
+    set_vars || return 1
+
+    delete_backup=true
+    if [ "$1" = "--no-delete" ]; then
+        delete_backup=false
+    fi
+
     latest_backup=$(ls -1 "$backup_dir/${local_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
     if [ -z "$latest_backup" ]; then
@@ -79,36 +85,21 @@ cc-restore() {
     echo "Extracting backup..."
     tar zxf "$latest_backup" -C "$HOME/.claude/projects/"
 
-    echo "Restore complete!"
+    if [ "$delete_backup" = true ]; then
+        echo "Removing backup: $latest_backup"
+        rm "$latest_backup"
+        echo "Pop complete!"
+    else
+        echo "Restore complete!"
+    fi
 }
 
-cc-pop() {
-    get_context_vars || return 1
-    latest_backup=$(ls -1 "$backup_dir/${local_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
-
-    if [ -z "$latest_backup" ]; then
-        echo "Error: No backups found for $local_context_dir"
-        return 1
-    fi
-
-    echo "Restoring from: $latest_backup"
-
-    if [ -d "$local_context_path" ]; then
-        echo "Removing current context directory..."
-        rm -rf "$local_context_path"
-    fi
-
-    echo "Extracting backup..."
-    tar zxf "$latest_backup" -C "$HOME/.claude/projects/"
-
-    echo "Removing backup: $latest_backup"
-    rm "$latest_backup"
-
-    echo "Pop complete!"
+cc-restore() {
+    cc-pop --no-delete
 }
 
 cc-copy() {
-    get_context_vars || return 1
+    set_vars || return 1
 
     dry_run=false
     remote_host=""
@@ -133,7 +124,7 @@ cc-copy() {
     fi
 
     relative_path="${current_dir#$HOME/}"
-    get_remote_context_path "$remote_host" "$relative_path" || return 1
+    set_remote_context_path "$remote_host" "$relative_path" || return 1
 
     echo "Remote host: $remote_host"
     echo "Remote context directory: $remote_context_path"
