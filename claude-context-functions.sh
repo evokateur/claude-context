@@ -1,0 +1,98 @@
+backup_dir="$HOME/.claude/backups/projects"
+
+get_context_vars() {
+    current_dir=$(pwd)
+    claude_context_dir=$(echo "$current_dir" | sed 's/\//-/g')
+    local_context_path="$HOME/.claude/projects/$claude_context_dir"
+}
+
+backup_cc() {
+    get_context_vars
+    if [ ! -d "$local_context_path" ]; then
+        echo "Error: Claude context directory does not exist on this machine"
+        echo "Expected path: $local_context_path"
+        return 1
+    fi
+
+    mkdir -p "$backup_dir"
+
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    backup_file="${backup_dir}/${claude_context_dir}_${timestamp}.tar.gz"
+
+    echo "Creating backup of local context directory..."
+    cd "$HOME/.claude/projects"
+    tar czf "$backup_file" "./$claude_context_dir/"
+
+    echo "Backup created: $backup_file"
+    echo "$backup_file"
+}
+
+restore_cc() {
+    get_context_vars
+    latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
+
+    if [ -z "$latest_backup" ]; then
+        echo "Error: No backups found for $claude_context_dir"
+        return 1
+    fi
+
+    echo "Restoring from: $latest_backup"
+
+    if [ -d "$local_context_path" ]; then
+        echo "Removing current context directory..."
+        rm -rf "$local_context_path"
+    fi
+
+    echo "Extracting backup..."
+    tar zxf "$latest_backup" -C "$HOME/.claude/projects/"
+
+    echo "Restore complete!"
+}
+
+copy_cc_from() {
+    get_context_vars
+    from_machine="$1"
+
+    if [ -z "$from_machine" ]; then
+        echo "Error: from_machine argument is required"
+        echo "Usage: copy_cc_from <machine-name>"
+        return 1
+    fi
+
+    this_machine=$(hostname -s)
+
+    if [ "$from_machine" = "$this_machine" ]; then
+        echo "Error: from_machine ($from_machine) is the same as this machine"
+        return 1
+    fi
+
+    if [ ! -d "$local_context_path" ]; then
+        echo "Error: Claude context directory does not exist on this machine"
+        echo "Expected path: $local_context_path"
+        return 1
+    fi
+
+    echo "Checking SSH connectivity to $from_machine..."
+    if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$from_machine" exit 2>/dev/null; then
+        echo "Error: Cannot connect to $from_machine over SSH"
+        return 1
+    fi
+
+    echo "Checking if Claude context directory exists on $from_machine..."
+    remote_path="~/.claude/projects/$claude_context_dir"
+    if ! ssh "$from_machine" "test -d $remote_path" 2>/dev/null; then
+        echo "Error: Claude context directory does not exist on $from_machine"
+        echo "Expected path: $remote_path"
+        return 1
+    fi
+
+    echo "From machine: $from_machine"
+    echo "Claude context directory: $claude_context_dir"
+    echo "All checks passed!"
+
+    backup_cc
+
+    echo ""
+    echo "Dry run - showing what would be transferred:"
+    rsync -av --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+}
