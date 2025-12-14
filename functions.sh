@@ -1,13 +1,18 @@
-backup_dir="$HOME/.claude/backups/projects"
-
 get_context_vars() {
+    if [ ! -d "$HOME/.claude/projects" ]; then
+        echo "Error: $HOME/.claude/projects directory does not exist"
+        echo "Is Claude Code installed?"
+        return 1
+    fi
+
+    backup_dir="$HOME/.claude/backups/projects"
     current_dir=$(pwd)
     claude_context_dir=$(echo "$current_dir" | sed 's/\//-/g')
     local_context_path="$HOME/.claude/projects/$claude_context_dir"
 }
 
 cc-backup() {
-    get_context_vars
+    get_context_vars || return 1
     if [ ! -d "$local_context_path" ]; then
         echo "Error: Claude context directory does not exist on this machine"
         echo "Expected path: $local_context_path"
@@ -28,7 +33,7 @@ cc-backup() {
 }
 
 cc-restore() {
-    get_context_vars
+    get_context_vars || return 1
     latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
     if [ -z "$latest_backup" ]; then
@@ -50,7 +55,7 @@ cc-restore() {
 }
 
 cc-pop() {
-    get_context_vars
+    get_context_vars || return 1
     latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
     if [ -z "$latest_backup" ]; then
@@ -75,7 +80,7 @@ cc-pop() {
 }
 
 cc-copy() {
-    get_context_vars
+    get_context_vars || return 1
 
     dry_run=false
     from_machine=""
@@ -103,12 +108,6 @@ cc-copy() {
 
     if [ "$from_machine" = "$this_machine" ]; then
         echo "Error: from_machine ($from_machine) is the same as this machine"
-        return 1
-    fi
-
-    if [ ! -d "$HOME/.claude/projects" ]; then
-        echo "Error: $HOME/.claude/projects directory does not exist"
-        echo "Is Claude Code installed?"
         return 1
     fi
 
