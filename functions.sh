@@ -25,8 +25,7 @@ cc-backup() {
     backup_file="${backup_dir}/${claude_context_dir}_${timestamp}.tar.gz"
 
     echo "Creating backup of local context directory..."
-    cd "$HOME/.claude/projects"
-    tar czf "$backup_file" "./$claude_context_dir/"
+    (cd "$HOME/.claude/projects" && tar czf "$backup_file" "./$claude_context_dir/")
 
     echo "Backup created: $backup_file"
     echo "$backup_file"
