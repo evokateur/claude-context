@@ -6,7 +6,7 @@ get_context_vars() {
     local_context_path="$HOME/.claude/projects/$claude_context_dir"
 }
 
-backup_cc() {
+cc-backup() {
     get_context_vars
     if [ ! -d "$local_context_path" ]; then
         echo "Error: Claude context directory does not exist on this machine"
@@ -27,7 +27,7 @@ backup_cc() {
     echo "$backup_file"
 }
 
-restore_cc() {
+cc-restore() {
     get_context_vars
     latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
@@ -49,11 +49,7 @@ restore_cc() {
     echo "Restore complete!"
 }
 
-push_cc() {
-    backup_cc
-}
-
-pop_cc() {
+cc-pop() {
     get_context_vars
     latest_backup=$(ls -1 "$backup_dir/${claude_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
@@ -78,7 +74,7 @@ pop_cc() {
     echo "Pop complete!"
 }
 
-copy_cc_from() {
+cc-copy() {
     get_context_vars
 
     dry_run=false
@@ -97,11 +93,9 @@ copy_cc_from() {
         esac
     done
 
-    dry_run=true # HIJACKED: always set to true for now
-
     if [ -z "$from_machine" ]; then
         echo "Error: from_machine argument is required"
-        echo "Usage: copy_cc_from [--dry-run] <machine-name>"
+        echo "Usage: cc-copy [--dry-run] <machine-name>"
         return 1
     fi
 
@@ -137,7 +131,7 @@ copy_cc_from() {
     echo "All checks passed!"
 
     if [ -d "$local_context_path" ]; then
-        backup_cc
+        cc-backup
         echo ""
     fi
 
