@@ -102,7 +102,7 @@ cc-copy() {
     set_vars || return 1
 
     dry_run=false
-    remote_host=""
+    remote_spec=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -111,19 +111,26 @@ cc-copy() {
             shift
             ;;
         *)
-            remote_host="$1"
+            remote_spec="$1"
             shift
             ;;
         esac
     done
 
-    if [ -z "$remote_host" ]; then
+    if [ -z "$remote_spec" ]; then
         echo "Error: remote host argument is required"
-        echo "Usage: cc-copy [--dry-run] <remote-host>"
+        echo "Usage: cc-copy [--dry-run] <remote-host[:path]>"
         return 1
     fi
 
-    relative_path="${current_dir#$HOME/}"
+    if [[ "$remote_spec" == *:* ]]; then
+        remote_host="${remote_spec%%:*}"
+        relative_path="${remote_spec#*:}"
+    else
+        remote_host="$remote_spec"
+        relative_path="${current_dir#$HOME/}"
+    fi
+
     set_remote_context_path "$remote_host" "$relative_path" || return 1
 
     echo "Remote host: $remote_host"
