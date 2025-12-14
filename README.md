@@ -6,14 +6,14 @@ Shell functions for rsyncing Claude Code project context from remote machines an
 
 - `cc-copy [--dry-run] <host[:path]>`
   - Syncs a specific context in `~/.claude/projects` from specified remote host to local machine using `rsync`
-  - Determines local Claude project context directory from current working directory
+  - Determines local Claude Code project context directory from current working directory
   - Determines remote Claude Code project context directory based on remote `$HOME` + relative path
   - Assumes project directory has same relative path on both machines unless specified using `host:path` syntax
   - If the local project context exists, a backup is created before overwriting
 
 - `cc-backup`
   - Creates a timestamped backup of the Claude Code project context for the current working directory
-  - Backup stored in ~/.claude/backups/projects/ as {context-dir}_{timestamp}.tar.gz
+  - Backup stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
 
 - `cc-restore`
   - Restores the most recent backup for the current working directory's Claude Code project context
