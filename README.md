@@ -1,6 +1,6 @@
-# Claude Context Syncing and Backup Management
+# Claude Code context sync and backup
 
-Shell functions for syncing Claude Code conversation context from remote machines and managing local backups.
+Shell functions for rsyncing Claude Code project context from remote machines and managing local backups.
 
 ## Functions
 
@@ -16,9 +16,10 @@ Shell functions for syncing Claude Code conversation context from remote machine
 
 - `cc-restore`
   - Restores the most recent backup of the current Claude Code project context
+  - Read source for guidance on restoring specific backups
 
 - `cc-pop`
-  - Restores the most recent backup of the current Claude Code project context, deleting that backup after restoration
+  - Restores the most recent backup of the current Claude Code project context, then clobbers the backup file
 
 ## Requirements
 
@@ -32,3 +33,9 @@ Shell functions for syncing Claude Code conversation context from remote machine
   - SSH key-based authentication configured
   - Remote host accessible via `ssh <hostname>` or `ssh <user@host>`
 - `rsync` installed on both local and remote machines
+
+## Setup
+
+- Clone or download this repository
+- (optional) Move the script somewhere, like `~/.config/shell/functions/`
+- `source` the script in your shell configuration file (e.g., `.bashrc`, `.zshrc`)
