@@ -33,9 +33,9 @@ get_remote_context_path() {
     remote_context_path="${remote_home}/.claude/projects/$remote_context_dir"
 
     echo "Checking if Claude context directory exists on $remote_host..."
-    if ! ssh "$remote_host" "test -d $remote_path" 2>/dev/null; then
+    if ! ssh "$remote_host" "test -d $remote_context_path" 2>/dev/null; then
         echo "Error: Claude context directory does not exist on $remote_host"
-        echo "Expected path: $remote_path"
+        echo "Expected path: $remote_context_path"
         return 1
     fi
 }
