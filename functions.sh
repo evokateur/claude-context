@@ -116,8 +116,19 @@ cc-copy() {
         return 1
     fi
 
+    echo "Detecting remote home directory..."
+    remote_home=$(ssh "$from_machine" "echo \$HOME" 2>/dev/null)
+    if [ -z "$remote_home" ]; then
+        echo "Error: Could not determine remote home directory"
+        return 1
+    fi
+
+    relative_path="${current_dir#$HOME/}"
+    remote_full_path="${remote_home}/${relative_path}"
+    remote_context_dir=$(echo "$remote_full_path" | sed 's/\//-/g')
+
     echo "Checking if Claude context directory exists on $from_machine..."
-    remote_path="~/.claude/projects/$claude_context_dir"
+    remote_path="${remote_home}/.claude/projects/$remote_context_dir"
     if ! ssh "$from_machine" "test -d $remote_path" 2>/dev/null; then
         echo "Error: Claude context directory does not exist on $from_machine"
         echo "Expected path: $remote_path"
@@ -131,14 +142,14 @@ cc-copy() {
     if [ "$dry_run" = true ]; then
         echo ""
         echo "Dry run - showing what would be transferred:"
-        rsync -av --delete --dry-run "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+        rsync -av --delete --dry-run "${from_machine}:${remote_path}/" "${local_context_path}/"
     else
         if [ -d "$local_context_path" ]; then
             cc-backup
             echo ""
         fi
         echo "Syncing from $from_machine..."
-        rsync -av --delete "${from_machine}:~/.claude/projects/${claude_context_dir}/" "${local_context_path}/"
+        rsync -av --delete "${from_machine}:${remote_path}/" "${local_context_path}/"
         echo "Sync complete!"
     fi
 }
