@@ -37,5 +37,5 @@ Shell functions for rsyncing Claude Code project context from remote machines an
 ## Setup
 
 - Clone or download this repository
-- (optional) Move the script somewhere, like `~/.config/shell/functions/`
+- (optional) Move the script somewhere, as you like (e.g. `~/.config/shell/functions`)
 - `source` the script in your shell configuration file (e.g., `.bashrc`, `.zshrc`)
