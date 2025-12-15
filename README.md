@@ -1,6 +1,12 @@
 # Claude Code project context sync and backup
 
-Shell functions I use for copying Claude Code project context from remote machines with local backups.
+Shell functions I use for copying Claude Code project context from remote machines with local backups. 
+
+Being able to sync a context directory in `~/.claude/projects` is all I really need to move from one machine to another and pick up where I left off. 
+
+The copy function below takes into account differences in home directory structure reflected in the context directory name. For a project at `~/code/catbutt` the directory `-home-user-code-catbutt` will be synced from a linux machine to `-Users-user-code-catbutt` on macOS. 
+
+Specifying `:path` is only necessary for projects in different relative directories, i.e. `~/code/catbutt` and `~/projects/catbutt`
 
 ## Functions
 
