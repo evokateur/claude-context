@@ -4,7 +4,7 @@ Shell functions I use for copying Claude Code project context from remote machin
 
 Being able to sync a context directory in `~/.claude/projects` is all I really need to move machines and pick up where I left off. 
 
-The copy function below takes into account differences in home directory structure reflected in the context directory name. For a project at `~/code/catbutt` the directory `-home-user-code-catbutt` will be synced from a linux machine to `-Users-user-code-catbutt` on macOS. 
+The copy function below takes into account differences in home directory structure reflected in the context directory name. For a project at `~/code/catbutt` the directory `-home-wesley-code-catbutt` will be synced from a linux machine to `-Users-wesley-code-catbutt` on macOS. 
 
 Specifying `:path` is only necessary for projects in different relative directories, i.e. `~/code/catbutt` and `~/projects/catbutt`
 
