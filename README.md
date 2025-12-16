@@ -30,8 +30,8 @@ The remote path spec is only necessary to sync context for different relative di
   - Syncs a specific context in `~/.claude/projects` from specified remote host to local machine using `rsync`
   - Determines local Claude Code project context directory from current working directory
   - Determines remote Claude Code project context directory based on remote `$HOME` + relative path
-  - Assumes project directory has same relative path on both machines unless specified using `host:path` syntax
-  - If the local project context exists, a backup is created before overwriting
+  - Assumes code directory has same relative path on both machines unless specified using `host:path` syntax
+  - If the local context directory exists, a backup is created before overwriting
 
 - `cc-backup`
   - Creates a timestamped backup of the Claude Code project context for the current working directory
