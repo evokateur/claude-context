@@ -2,14 +2,27 @@
 
 Shell functions I use for copying Claude Code project context from remote machines with local backups.
 
-Being able to sync a context directory in `~/.claude/projects` is all I really need to move machines and pick up where I left off.
+## Syncing Claude Code contexts between machines
 
-The copy function below takes into account differences in home directory structure reflected in the context directory name.
+To pick up where I left off on another machine I sync the context directory in `~/.claude/projects` that corresponds to the code directory I'm working in. 
 
-For a project at `~/code/catbutt` on both ends the directory  `~/.claude/projects/-home-wesley-code-catbutt`
-will be synced from a Linux machine to `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
+The copy function below derives the context directory from the current working directory. It takes into account differences in home directory structure.
 
-The remote path spec is only necessary for projects in different relative directories, i.e. `~/code/catbutt` vs `~/projects/catbutt`
+For example, `~/code/catbutt` will have context at 
+- `~/.claude/projects/-home-wesley-code-catbutt` on Linux and 
+- `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
+
+If the relative path is the same on both machines, I only need to specify the host:
+
+```sh
+~/code-catbutt$ cc-copy xicamatl
+```
+
+The remote path spec is only necessary to sync context for different relative directory on the remote, i.e. `~/projects/catbutt`:
+
+```sh
+~/code/catbutt$ cc-copy xicamatl:projects/catbutt
+```
 
 ## Functions
 
