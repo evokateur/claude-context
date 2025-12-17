@@ -29,7 +29,7 @@ The remote path spec is only necessary to sync context for different relative di
 - `cc-copy [--dry-run] <host[:path]>`
   - Syncs a specific context in `~/.claude/projects` from specified remote host to local machine using `rsync`
   - Determines local Claude Code project context directory from current working directory
-  - Determines remote Claude Code project context directory based on remote `$HOME` + relative path
+  - Determines remote context directory based on remote `$HOME` + relative path
   - Assumes code directory has same relative path on both machines unless specified using `host:path` syntax
   - If the local context directory exists, a backup is created before overwriting
 
