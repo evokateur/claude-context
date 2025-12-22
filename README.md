@@ -18,7 +18,7 @@ If the relative path is the same on both machines, I only need to specify the ho
 ~/code-catbutt$ cc-copy xicamatl
 ```
 
-The remote path spec is only necessary to sync context for a different relative directory on the remote, i.e. `~/projects/catbutt`:
+The remote path spec is only necessary to sync context for a different relative directory on the remote, e.g. `~/projects/catbutt`:
 
 ```sh
 ~/code/catbutt$ cc-copy xicamatl:projects/catbutt
