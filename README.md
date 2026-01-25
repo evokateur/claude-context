@@ -24,10 +24,10 @@ The remote path spec is only necessary to sync context for a different relative 
 ~/code/catbutt$ cc-copy xicamatl:projects/catbutt
 ```
 
-You can also use it to copy the context of a renamed a project (having run `< ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys`)
+One can also use it to retrieve the context of a renamed project (with `~/.ssh/id_rsa.pub` in `~/.ssh/authorized_keys`)
 
 ```sh
-~/code/frobizzle cc-copy localhost:code/frobozz
+~/code/frobizzle$ cc-copy localhost:code/frobozz
 ```
 
 ## Functions
