@@ -15,13 +15,19 @@ For example, `~/code/catbutt` will have context at
 If the relative path is the same on both machines, I only need to specify the host:
 
 ```sh
-~/code-catbutt$ cc-copy xicamatl
+~/code/catbutt$ cc-copy xicamatl
 ```
 
 The remote path spec is only necessary to sync context for a different relative directory on the remote, e.g. `~/projects/catbutt`:
 
 ```sh
 ~/code/catbutt$ cc-copy xicamatl:projects/catbutt
+```
+
+You can also use it to copy the context of a renamed a project (having run `< ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys`)
+
+```sh
+~/code/frobizzle cc-copy localhost:code/frobozz
 ```
 
 ## Functions
