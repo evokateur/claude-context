@@ -68,5 +68,5 @@ One can also use it to retrieve the context of a renamed project (with `~/.ssh/i
 ## Setup
 
 - Clone or download this repository
-- (optional) Move the script somewhere, as you like (e.g. `~/.config/shell/functions`)
+- (optional) copy the script elsewhere, as you like (e.g. `~/.config/shell/functions/`)
 - `source` the script in your shell configuration file (e.g., `.bashrc`, `.zshrc`)
