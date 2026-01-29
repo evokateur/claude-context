@@ -27,7 +27,7 @@ The remote path spec is only necessary to sync context for a different relative 
 One can also use it to retrieve the context of a renamed project (with `~/.ssh/id_rsa.pub` in `~/.ssh/authorized_keys`)
 
 ```sh
-~/code/frobizzle$ cc-copy localhost:code/frobozz
+~/code/cul-de-chat$ cc-copy localhost:code/catbutt
 ```
 
 ## Functions
