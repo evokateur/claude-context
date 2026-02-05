@@ -142,6 +142,7 @@ cc-sync() {
     echo "Remote host: $remote_host"
     echo "Remote context directory: $remote_context_path"
     echo "Local context directory: $local_context_path"
+    echo ""
 
     if [ "$dry_run" = false ] && [ -d "$local_context_path" ]; then
         cc-backup
