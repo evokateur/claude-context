@@ -1,72 +1,71 @@
 # Claude Code project context sync and backup
 
-Shell functions I use for copying Claude Code project context from remote machines with local backups.
+Shell functions that wrap `rsync` for syncing Claude Code project context between machines, with local backups.
 
-## Syncing Claude Code contexts between machines
+## Syncing contexts between machines
 
-To pick up where I left off on another machine I sync the context directory in `~/.claude/projects` that corresponds to the code directory I'm working in. 
+`cc-sync` rsyncs a project's context directory in `~/.claude/projects` from a remote machine to the local machine. It derives context directory names from the current working directory, accounting for home directory path differences between OSes.
 
-The copy function below derives the context directory from the current working directory. It takes into account differences in home directory structure.
-
-For example, `~/code/catbutt` will have context at 
-- `~/.claude/projects/-home-wesley-code-catbutt` on Linux and 
+For example, `~/code/catbutt` will have context at
+- `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
 - `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
 
-If the relative path is the same on both machines, I only need to specify the host:
+If the relative path is the same on both machines, only the host is needed:
 
 ```sh
-~/code/catbutt$ cc-copy xicamatl
+~/code/catbutt$ cc-sync xicamatl
 ```
 
-The remote path spec is only necessary to sync context for a different relative directory on the remote, e.g. `~/projects/catbutt`:
+A remote path is only necessary when the relative directory differs, e.g. `~/projects/catbutt` on the remote:
 
 ```sh
-~/code/catbutt$ cc-copy xicamatl:projects/catbutt
+~/code/catbutt$ cc-sync xicamatl:projects/catbutt
 ```
 
-One can also use it to retrieve the context of a renamed project (with `~/.ssh/id_rsa.pub` in `~/.ssh/authorized_keys`)
+One can also use it to retrieve the context of a renamed project (with `~/.ssh/id_rsa.pub` in `~/.ssh/authorized_keys`):
 
 ```sh
-~/code/cul-de-chat$ cc-copy localhost:code/catbutt
+~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
+
+By default, `cc-sync` is additive — remote sessions are copied without removing local ones, consolidating sessions from both machines. Use `--delete` to make local match remote exactly.
+
+A backup of the local context directory is created before syncing, except with `--dry-run`.
 
 ## Functions
 
-- `cc-copy [--dry-run] <host[:path]>`
-  - Syncs a specific context in `~/.claude/projects` from specified remote host to local machine using `rsync`
-  - Determines local Claude Code project context directory from current working directory
-  - Determines remote context directory based on remote `$HOME` + relative path
-  - Assumes code directory has same relative path on both machines unless specified using `host:path` syntax
-  - If the local context directory exists, a backup is created before overwriting
+- `cc-sync [rsync-options] <host[:path]>`
+  - Wraps `rsync -av` with passthrough of recognized rsync options:
+    - `--dry-run`, `-n`: preview what would be transferred (no backup made)
+    - `--delete`: remove local files not present on remote (clobber mode)
+    - `-z`, `--compress`: compress data during transfer
+  - Determines context directories from current working directory and remote `$HOME`
+  - Assumes same relative path on both machines unless specified with `host:path`
 
 - `cc-backup`
-  - Creates a timestamped backup of the Claude Code project context for the current working directory
-  - Backup stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
+  - Creates a timestamped backup of the current project's context directory
+  - Stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
 
 - `cc-restore`
-  - Restores the most recent backup for the current working directory's Claude Code project context
-  - Keeps the backup file intact after restoration
-  - See source for restoring specific backups by timestamp
+  - Restores the most recent backup for the current project's context
+  - Keeps the backup file intact
 
 - `cc-pop`
-  - Restores the most recent backup for the current working directory's Claude Code project context
-  - Deletes the backup file after successful restoration
+  - Restores the most recent backup for the current project's context
+  - Deletes the backup file after restoration
 
 ## Requirements
 
 - Claude Code (`~/.claude/projects/` directory must exist)
-- Read/write access to `~/.claude/projects/`
-- Read/write access to `~/.claude/backups/projects/`
+- Read/write access to `~/.claude/projects/` and `~/.claude/backups/projects/`
 
-### For `cc-copy`
+### For `cc-sync`
 
 - Passwordless SSH access to remote machine
-  - SSH key-based authentication configured
-  - Remote host accessible via `ssh <hostname>` or `ssh <user@host>`
-- `rsync` installed on both local and remote machines
+- `rsync` installed on both machines
 
 ## Setup
 
 - Clone or download this repository
-- (optional) copy the script elsewhere, as you like (e.g. `~/.config/shell/functions/`)
+- (optional) Copy the script elsewhere, as you like (e.g. `~/.config/shell/functions/`)
 - `source` the script in your shell configuration file (e.g., `.bashrc`, `.zshrc`)

@@ -98,16 +98,22 @@ cc-restore() {
     cc-pop --no-delete
 }
 
-cc-copy() {
+cc-sync() {
     set_vars || return 1
 
+    rsync_options=()
     dry_run=false
     remote_spec=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-        --dry-run)
+        --dry-run|-n)
             dry_run=true
+            rsync_options+=("$1")
+            shift
+            ;;
+        --delete|-z|--compress)
+            rsync_options+=("$1")
             shift
             ;;
         *)
@@ -119,7 +125,7 @@ cc-copy() {
 
     if [ -z "$remote_spec" ]; then
         echo "Error: remote host argument is required"
-        echo "Usage: cc-copy [--dry-run] <remote-host[:path]>"
+        echo "Usage: cc-sync [rsync-options] <host[:path]>"
         return 1
     fi
 
@@ -137,17 +143,12 @@ cc-copy() {
     echo "Remote context directory: $remote_context_path"
     echo "Local context directory: $local_context_path"
 
-    if [ "$dry_run" = true ]; then
+    if [ "$dry_run" = false ] && [ -d "$local_context_path" ]; then
+        cc-backup
         echo ""
-        echo "Dry run - showing what would be transferred:"
-        rsync -av --delete --dry-run "${remote_host}:${remote_context_path}/" "${local_context_path}/"
-    else
-        if [ -d "$local_context_path" ]; then
-            cc-backup
-            echo ""
-        fi
-        echo "Syncing from $remote_host..."
-        rsync -av --delete "${remote_host}:${remote_context_path}/" "${local_context_path}/"
-        echo "Sync complete!"
     fi
+
+    echo "Syncing from $remote_host..."
+    rsync -av "${rsync_options[@]}" "${remote_host}:${remote_context_path}/" "${local_context_path}/"
+    echo "Sync complete!"
 }
