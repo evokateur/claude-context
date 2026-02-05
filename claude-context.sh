@@ -107,12 +107,12 @@ cc-sync() {
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-        --dry-run|-n)
+        --dry-run | -n)
             dry_run=true
             rsync_options+=("$1")
             shift
             ;;
-        --delete|-z|--compress)
+        --delete | -z | --compress)
             rsync_options+=("$1")
             shift
             ;;
@@ -148,7 +148,11 @@ cc-sync() {
         echo ""
     fi
 
-    echo "Syncing from $remote_host..."
+    if [ "$dry_run" = true ]; then
+        echo "Previewing sync from $remote_host (dry run)..."
+    else
+        echo "Syncing from $remote_host..."
+    fi
     rsync -av "${rsync_options[@]}" "${remote_host}:${remote_context_path}/" "${local_context_path}/"
-    echo "Sync complete!"
+    echo "Done."
 }
