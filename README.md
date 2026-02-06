@@ -16,13 +16,13 @@ If the relative path is the same on both machines, only the host is needed:
 ~/code/catbutt$ cc-sync xicamatl
 ```
 
-A remote path is only necessary when the relative directory differs, e.g. `~/projects/catbutt` on the remote:
+A remote path is only necessary when the relative directory differs, e.g. `~/projects/catbutt`:
 
 ```sh
 ~/code/catbutt$ cc-sync xicamatl:projects/catbutt
 ```
 
-One can also use it to retrieve the context of a renamed project (with `~/.ssh/id_rsa.pub` in `~/.ssh/authorized_keys`):
+One can also use it locally to retrieve the context of a renamed project:
 
 ```sh
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
@@ -47,11 +47,11 @@ A backup of the local context directory is created before syncing, except with `
   - Stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
 
 - `cc-restore`
-  - Restores the most recent backup for the current project's context
+  - Restores the most recent backup of the current project's context
   - Keeps the backup file intact
 
 - `cc-pop`
-  - Restores the most recent backup for the current project's context
+  - Restores the most recent backup of the current project's context
   - Deletes the backup file after restoration
 
 ## Requirements
