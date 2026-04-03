@@ -98,6 +98,13 @@ cc-restore() {
     cc-pop --no-delete
 }
 
+has_files_to_sync() {
+    local count
+    count=$(rsync -av --dry-run "$@" 2>/dev/null \
+        | grep -cvE '^(building file list|sending incremental file list|receiving incremental file list|Transfer starting|sent |total size|\./|$)')
+    [ "$count" -gt 0 ]
+}
+
 cc-sync() {
     set_vars || return 1
 
@@ -144,7 +151,7 @@ cc-sync() {
     echo "Local context directory: $local_context_path"
     echo ""
 
-    if [ "$dry_run" = false ] && [ -d "$local_context_path" ]; then
+    if [ "$dry_run" = false ] && [ -d "$local_context_path" ] && has_files_to_sync "${rsync_options[@]}" "${remote_host}:${remote_context_path}/" "${local_context_path}/"; then
         cc-backup
         echo ""
     fi
