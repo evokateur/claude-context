@@ -101,7 +101,7 @@ cc-restore() {
 has_files_to_sync() {
     local count
     count=$(rsync -av --dry-run "$@" 2>/dev/null \
-        | grep -cvE '^(building file list|sending incremental file list|receiving incremental file list|sent |total size|\./|$)')
+        | grep -cvE '^(building file list|sending incremental file list|receiving incremental file list|Transfer starting|sent |total size|\./|$)')
     [ "$count" -gt 0 ]
 }
 
