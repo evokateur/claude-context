@@ -4,7 +4,7 @@ Shell functions for syncing Claude Code project context across machines, with lo
 
 ## Syncing contexts between machines
 
-`cc-sync` rsyncs a context directory in `~/.claude/projects` from a remote machine to the local machine. It derives context directory names from the current working directory, accounting for OS home directory path differences.
+`cc-sync` rsyncs a context directory in `~/.claude/projects` between machines. By default it pulls from a remote machine to the local machine. With `--push`, it pushes the local context to the remote machine. It derives context directory names from the current working directory, accounting for OS home directory path differences.
 
 For example, `~/code/catbutt` will have context at
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
@@ -30,12 +30,27 @@ To retrieve the context of a renamed project:
 
 By default (`rsync` and therefore) `cc-sync` is additive, consolidating context across machines. Use `--delete` to make local match remote exactly.
 
-A backup of the local context directory is created before syncing, except with `--dry-run`.
+A backup of the destination context directory is created before syncing, except with `--dry-run`.
+
+To push the local context to the remote machine:
+
+```sh
+~/code/catbutt$ cc-sync --push xicamatl
+```
+
+If the target project path differs on the remote machine:
+
+```sh
+~/code/catbutt$ cc-sync --push xicamatl:projects/catbutt
+```
+
+When pushing, `cc-sync` creates the remote context directory if it does not already exist.
 
 ## Functions
 
 - `cc-sync [rsync-options] <host[:path]>`
   - Wraps `rsync -av` with passthrough of recognized rsync options:
+    - `--push`: sync local context to remote instead of pulling from remote
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: remove local context not present on remote
     - `-z`, `--compress`: compress data during transfer
