@@ -128,20 +128,13 @@ has_files_to_sync() {
     [ "$count" -gt 0 ]
 }
 
-cc-sync() {
-    set_vars || return 1
-
+parse_sync_args() {
     rsync_options=()
     dry_run=false
-    push=false
     remote_spec=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-        --push)
-            push=true
-            shift
-            ;;
         --dry-run | -n)
             dry_run=true
             rsync_options+=("$1")
@@ -160,7 +153,13 @@ cc-sync() {
 
     if [ -z "$remote_spec" ]; then
         echo "Error: remote host argument is required"
-        echo "Usage: cc-sync [rsync-options] <host[:path]>"
+        return 1
+    fi
+}
+
+set_remote_spec_vars() {
+    if [ -z "$remote_spec" ]; then
+        echo "Error: remote host argument is required"
         return 1
     fi
 
@@ -171,18 +170,20 @@ cc-sync() {
         remote_host="$remote_spec"
         relative_path="${current_dir#$HOME/}"
     fi
+}
 
-    set_remote_context_path "$remote_host" "$relative_path" "$push" || return 1
+cc-sync-from() {
+    set_vars || return 1
+    parse_sync_args "$@" || {
+        echo "Usage: cc-sync-from [rsync-options] <host[:path]>"
+        return 1
+    }
+    set_remote_spec_vars || return 1
 
-    if [ "$push" = true ]; then
-        sync_source="${local_context_path}/"
-        sync_destination="${remote_host}:${remote_context_path}/"
-        sync_direction="to $remote_host"
-    else
-        sync_source="${remote_host}:${remote_context_path}/"
-        sync_destination="${local_context_path}/"
-        sync_direction="from $remote_host"
-    fi
+    set_remote_context_path "$remote_host" "$relative_path" false || return 1
+
+    sync_source="${remote_host}:${remote_context_path}/"
+    sync_destination="${local_context_path}/"
 
     echo "Remote host: $remote_host"
     echo "Remote context directory: $remote_context_path"
@@ -190,22 +191,55 @@ cc-sync() {
     echo ""
 
     if [ "$dry_run" = false ] && has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
-        if [ "$push" = true ]; then
-            if [ "$remote_context_exists" = true ]; then
-                cc-remote-backup "$remote_host" "$remote_context_dir" || return 1
-                echo ""
-            fi
-        elif [ -d "$local_context_path" ]; then
+        if [ -d "$local_context_path" ]; then
             cc-backup
             echo ""
         fi
     fi
 
     if [ "$dry_run" = true ]; then
-        echo "Previewing sync $sync_direction (dry run)..."
+        echo "Previewing sync from $remote_host (dry run)..."
     else
-        echo "Syncing $sync_direction..."
+        echo "Syncing from $remote_host..."
     fi
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
     echo "Done."
+}
+
+cc-sync-to() {
+    set_vars || return 1
+    parse_sync_args "$@" || {
+        echo "Usage: cc-sync-to [rsync-options] <host[:path]>"
+        return 1
+    }
+    set_remote_spec_vars || return 1
+
+    set_remote_context_path "$remote_host" "$relative_path" true || return 1
+
+    sync_source="${local_context_path}/"
+    sync_destination="${remote_host}:${remote_context_path}/"
+
+    echo "Remote host: $remote_host"
+    echo "Remote context directory: $remote_context_path"
+    echo "Local context directory: $local_context_path"
+    echo ""
+
+    if [ "$dry_run" = false ] && has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
+        if [ "$remote_context_exists" = true ]; then
+            cc-remote-backup "$remote_host" "$remote_context_dir" || return 1
+            echo ""
+        fi
+    fi
+
+    if [ "$dry_run" = true ]; then
+        echo "Previewing sync to $remote_host (dry run)..."
+    else
+        echo "Syncing to $remote_host..."
+    fi
+    rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
+    echo "Done."
+}
+
+cc-sync() {
+    cc-sync-from "$@"
 }
