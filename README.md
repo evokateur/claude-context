@@ -7,6 +7,7 @@ Shell functions for syncing Claude Code project context across machines, with lo
 `cc-sync` syncs a context directory in `~/.claude/projects` between machines. `cc-sync pull` pulls from a remote machine to the local machine. `cc-sync push` pushes the local context to the remote machine. `cc-sync <host[:path]>` remains shorthand for `cc-sync pull <host[:path]>`. The functions derive context directory names from the current working directory, accounting for OS home directory path differences.
 
 For example, `~/code/catbutt` will have context at
+
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
 - `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
 
@@ -44,18 +45,6 @@ If the target project path differs on the remote machine:
 ~/code/catbutt$ cc-sync push xicamatl:projects/catbutt
 ```
 
-When pushing, `cc-sync push` creates the remote context directory if it does not already exist.
-
-Recognized rsync options may appear before or after `pull`/`push`:
-
-```sh
-~/code/catbutt$ cc-sync --dry-run push xicamatl
-~/code/catbutt$ cc-sync push --dry-run xicamatl
-~/code/catbutt$ cc-sync --dry-run xicamatl
-```
-
-Non-sync subcommands do not accept rsync options.
-
 ## Functions
 
 - `cc-sync [pull|push] [rsync-options] <host[:path]>`
@@ -66,6 +55,7 @@ Non-sync subcommands do not accept rsync options.
   - Context directories determined with tilde expansions of CWD relative to  `~/`
   - Assumes same relative path on remote unless `:path` is specified
   - If `pull` or `push` is omitted, defaults to `pull`
+  - `cc-sync push` creates the remote context directory if it does not already exist.
 
 - `cc-sync backup`
   - Creates a context backup for current working directory
