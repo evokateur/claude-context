@@ -76,23 +76,7 @@ Non-sync subcommands do not accept rsync options.
 - `cc-sync pop`
   - Restores the most recent backup for current working directory and deletes the backup file
 
-- Compatibility wrappers:
-  - `cc-sync-from` -> `cc-sync pull`
-  - `cc-sync-to` -> `cc-sync push`
-  - `cc-backup` -> `cc-sync backup`
-  - `cc-restore` -> `cc-sync restore`
-  - `cc-pop` -> `cc-sync pop`
-
-- `cc-backup`
-  - Creates a context backup for current working directory
-  - Stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
-
-- `cc-restore`
-  - Restores the most recent backup for current working directory
-
-- `cc-pop`
-  - Restores the most recent backup for current working directory
-  - Deletes the backup file after restoration
+- Backups are stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
 
 ## Requirements
 
