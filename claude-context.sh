@@ -50,7 +50,7 @@ _cc_sync_set_remote_context_path() {
 }
 
 cc-backup() {
-    set_vars || return 1
+    _cc_sync_set_vars || return 1
     if [ ! -d "$local_context_path" ]; then
         echo "Error: Claude context directory does not exist on this machine"
         echo "Expected path: $local_context_path"
@@ -70,7 +70,7 @@ cc-backup() {
 }
 
 cc-pop() {
-    set_vars || return 1
+    _cc_sync_set_vars || return 1
 
     delete_backup=true
     if [ "$1" = "--no-delete" ]; then
