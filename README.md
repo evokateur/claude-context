@@ -4,7 +4,7 @@ Shell functions for syncing Claude Code project context across machines, with lo
 
 ## Syncing contexts between machines
 
-`cc-sync-from` and `cc-sync-to` rsync a context directory in `~/.claude/projects` between machines. `cc-sync-from` pulls from a remote machine to the local machine. `cc-sync-to` pushes the local context to the remote machine. `cc-sync` remains an alias for `cc-sync-from`. The functions derive context directory names from the current working directory, accounting for OS home directory path differences.
+`cc-sync` syncs a context directory in `~/.claude/projects` between machines. `cc-sync pull` pulls from a remote machine to the local machine. `cc-sync push` pushes the local context to the remote machine. `cc-sync <host[:path]>` remains shorthand for `cc-sync pull <host[:path]>`. The functions derive context directory names from the current working directory, accounting for OS home directory path differences.
 
 For example, `~/code/catbutt` will have context at
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
@@ -13,19 +13,19 @@ For example, `~/code/catbutt` will have context at
 If the relative path is the same on both machines, only the host is needed:
 
 ```sh
-~/code/catbutt$ cc-sync-from xicamatl
+~/code/catbutt$ cc-sync pull xicamatl
 ```
 
 A remote path is necessary when the relative directory differs:
 
 ```sh
-~/code/catbutt$ cc-sync-from xicamatl:projects/catbutt
+~/code/catbutt$ cc-sync pull xicamatl:projects/catbutt
 ```
 
 To retrieve the context of a renamed project:
 
 ```sh
-~/code/cul-de-chat$ cc-sync-from localhost:code/catbutt
+~/code/cul-de-chat$ cc-sync pull localhost:code/catbutt
 ```
 
 By default (`rsync` and therefore) these sync commands are additive, consolidating context across machines. Use `--delete` to make the destination match the source exactly.
@@ -35,37 +35,53 @@ A backup of the destination context directory is created before syncing, except 
 To push the local context to the remote machine:
 
 ```sh
-~/code/catbutt$ cc-sync-to xicamatl
+~/code/catbutt$ cc-sync push xicamatl
 ```
 
 If the target project path differs on the remote machine:
 
 ```sh
-~/code/catbutt$ cc-sync-to xicamatl:projects/catbutt
+~/code/catbutt$ cc-sync push xicamatl:projects/catbutt
 ```
 
-When pushing, `cc-sync-to` creates the remote context directory if it does not already exist.
+When pushing, `cc-sync push` creates the remote context directory if it does not already exist.
+
+Recognized rsync options may appear before or after `pull`/`push`:
+
+```sh
+~/code/catbutt$ cc-sync --dry-run push xicamatl
+~/code/catbutt$ cc-sync push --dry-run xicamatl
+~/code/catbutt$ cc-sync --dry-run xicamatl
+```
+
+Non-sync subcommands do not accept rsync options.
 
 ## Functions
 
-- `cc-sync-from [rsync-options] <host[:path]>`
+- `cc-sync [pull|push] [rsync-options] <host[:path]>`
   - Wraps `rsync -av` with passthrough of recognized rsync options:
     - `--dry-run`, `-n`: preview what would be transferred
-    - `--delete`: remove local context not present in the remote source
+    - `--delete`: remove destination context not present in the source
     - `-z`, `--compress`: compress data during transfer
   - Context directories determined with tilde expansions of CWD relative to  `~/`
-  - Assumes same relative path on remote unless `:path` is specified.
+  - Assumes same relative path on remote unless `:path` is specified
+  - If `pull` or `push` is omitted, defaults to `pull`
 
-- `cc-sync-to [rsync-options] <host[:path]>`
-  - Wraps `rsync -av` with passthrough of recognized rsync options:
-    - `--dry-run`, `-n`: preview what would be transferred
-    - `--delete`: remove remote context not present in the local source
-    - `-z`, `--compress`: compress data during transfer
-  - Context directories determined with tilde expansions of CWD relative to  `~/`
-  - Assumes same relative path on remote unless `:path` is specified.
+- `cc-sync backup`
+  - Creates a context backup for current working directory
 
-- `cc-sync [rsync-options] <host[:path]>`
-  - Alias for `cc-sync-from`
+- `cc-sync restore`
+  - Restores the most recent backup for current working directory without deleting the backup
+
+- `cc-sync pop`
+  - Restores the most recent backup for current working directory and deletes the backup file
+
+- Compatibility wrappers:
+  - `cc-sync-from` -> `cc-sync pull`
+  - `cc-sync-to` -> `cc-sync push`
+  - `cc-backup` -> `cc-sync backup`
+  - `cc-restore` -> `cc-sync restore`
+  - `cc-pop` -> `cc-sync pop`
 
 - `cc-backup`
   - Creates a context backup for current working directory

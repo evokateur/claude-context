@@ -1,4 +1,4 @@
-set_vars() {
+_cc_sync_set_vars() {
     if [ ! -d "$HOME/.claude/projects" ]; then
         echo "Error: $HOME/.claude/projects directory does not exist"
         echo "Is Claude Code installed?"
@@ -11,7 +11,7 @@ set_vars() {
     local_context_path="$HOME/.claude/projects/$local_context_dir"
 }
 
-set_remote_context_path() {
+_cc_sync_set_remote_context_path() {
     remote_host="$1"
     relative_path="$2"
     create_if_missing="${3:-false}"
@@ -107,7 +107,7 @@ cc-restore() {
     cc-pop --no-delete
 }
 
-cc-remote-backup() {
+_cc_sync_remote_backup() {
     remote_host="$1"
     remote_context_dir="$2"
 
@@ -121,20 +121,29 @@ cc-remote-backup() {
     echo "Remote backup created: ${remote_host}:${remote_backup_file#\$HOME/}"
 }
 
-has_files_to_sync() {
+_cc_sync_has_files_to_sync() {
     local count
     count=$(rsync -av --dry-run "$@" 2>/dev/null |
         grep -cvE '^(building file list|sending incremental file list|receiving incremental file list|Transfer starting|sent |total size|\./|$)')
     [ "$count" -gt 0 ]
 }
 
-parse_sync_args() {
+_cc_sync_parse_sync_operation_args() {
+    sync_mode=""
     rsync_options=()
     dry_run=false
     remote_spec=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
+        pull | push)
+            if [ -n "$sync_mode" ] && [ "$sync_mode" != "$1" ]; then
+                echo "Error: multiple sync directions specified"
+                return 1
+            fi
+            sync_mode="$1"
+            shift
+            ;;
         --dry-run | -n)
             dry_run=true
             rsync_options+=("$1")
@@ -145,6 +154,10 @@ parse_sync_args() {
             shift
             ;;
         *)
+            if [ -n "$remote_spec" ]; then
+                echo "Error: expected exactly one remote host argument"
+                return 1
+            fi
             remote_spec="$1"
             shift
             ;;
@@ -157,7 +170,52 @@ parse_sync_args() {
     fi
 }
 
-set_remote_spec_vars() {
+_cc_sync_parse_dispatch_args() {
+    dispatch_command=""
+    rsync_options=()
+    dry_run=false
+    remote_spec=""
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        pull | push)
+            if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
+                echo "Error: multiple subcommands specified"
+                return 1
+            fi
+            dispatch_command="$1"
+            shift
+            ;;
+        backup | restore | pop)
+            if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
+                echo "Error: multiple subcommands specified"
+                return 1
+            fi
+            dispatch_command="$1"
+            shift
+            ;;
+        --dry-run | -n)
+            dry_run=true
+            rsync_options+=("$1")
+            shift
+            ;;
+        --delete | -z | --compress)
+            rsync_options+=("$1")
+            shift
+            ;;
+        *)
+            if [ -n "$remote_spec" ]; then
+                echo "Error: expected exactly one remote host argument"
+                return 1
+            fi
+            remote_spec="$1"
+            shift
+            ;;
+        esac
+    done
+}
+
+_cc_sync_set_remote_spec_vars() {
     if [ -z "$remote_spec" ]; then
         echo "Error: remote host argument is required"
         return 1
@@ -172,15 +230,8 @@ set_remote_spec_vars() {
     fi
 }
 
-cc-sync-from() {
-    set_vars || return 1
-    parse_sync_args "$@" || {
-        echo "Usage: cc-sync-from [rsync-options] <host[:path]>"
-        return 1
-    }
-    set_remote_spec_vars || return 1
-
-    set_remote_context_path "$remote_host" "$relative_path" false || return 1
+_cc_sync_run_from() {
+    _cc_sync_set_remote_context_path "$remote_host" "$relative_path" false || return 1
 
     sync_source="${remote_host}:${remote_context_path}/"
     sync_destination="${local_context_path}/"
@@ -190,7 +241,7 @@ cc-sync-from() {
     echo "Local context directory: $local_context_path"
     echo ""
 
-    if [ "$dry_run" = false ] && has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
+    if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ -d "$local_context_path" ]; then
             cc-backup
             echo ""
@@ -206,15 +257,8 @@ cc-sync-from() {
     echo "Done."
 }
 
-cc-sync-to() {
-    set_vars || return 1
-    parse_sync_args "$@" || {
-        echo "Usage: cc-sync-to [rsync-options] <host[:path]>"
-        return 1
-    }
-    set_remote_spec_vars || return 1
-
-    set_remote_context_path "$remote_host" "$relative_path" true || return 1
+_cc_sync_run_to() {
+    _cc_sync_set_remote_context_path "$remote_host" "$relative_path" true || return 1
 
     sync_source="${local_context_path}/"
     sync_destination="${remote_host}:${remote_context_path}/"
@@ -224,9 +268,9 @@ cc-sync-to() {
     echo "Local context directory: $local_context_path"
     echo ""
 
-    if [ "$dry_run" = false ] && has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
+    if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ "$remote_context_exists" = true ]; then
-            cc-remote-backup "$remote_host" "$remote_context_dir" || return 1
+            _cc_sync_remote_backup "$remote_host" "$remote_context_dir" || return 1
             echo ""
         fi
     fi
@@ -240,6 +284,85 @@ cc-sync-to() {
     echo "Done."
 }
 
+cc-sync-from() {
+    _cc_sync_set_vars || return 1
+    _cc_sync_parse_sync_operation_args "$@" || {
+        echo "Usage: cc-sync-from [rsync-options] <host[:path]>"
+        return 1
+    }
+    _cc_sync_set_remote_spec_vars || return 1
+    _cc_sync_run_from
+}
+
+cc-sync-to() {
+    _cc_sync_set_vars || return 1
+    _cc_sync_parse_sync_operation_args "$@" || {
+        echo "Usage: cc-sync-to [rsync-options] <host[:path]>"
+        return 1
+    }
+    _cc_sync_set_remote_spec_vars || return 1
+    _cc_sync_run_to
+}
+
 cc-sync() {
-    cc-sync-from "$@"
+    if [ $# -eq 0 ]; then
+        echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+        echo "       cc-sync [backup|restore|pop]"
+        return 1
+    fi
+
+    _cc_sync_parse_dispatch_args "$@" || {
+        echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+        echo "       cc-sync [backup|restore|pop]"
+        return 1
+    }
+
+    case $dispatch_command in
+    backup | restore | pop)
+        if [ "${#rsync_options[@]}" -gt 0 ]; then
+            echo "Error: rsync options are only valid with pull and push"
+            return 1
+        fi
+        if [ -n "$remote_spec" ]; then
+            echo "Error: $dispatch_command does not accept a remote host argument"
+            return 1
+        fi
+        case $dispatch_command in
+        backup)
+            cc-backup
+            ;;
+        restore)
+            cc-restore
+            ;;
+        pop)
+            cc-pop
+            ;;
+        esac
+        ;;
+    "" | pull | push)
+        _cc_sync_set_vars || return 1
+        sync_mode="$dispatch_command"
+        if [ -z "$sync_mode" ]; then
+            sync_mode="pull"
+        fi
+        if [ -z "$remote_spec" ]; then
+            echo "Error: remote host argument is required"
+            echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+            return 1
+        fi
+        _cc_sync_set_remote_spec_vars || return 1
+        case $sync_mode in
+        pull)
+            _cc_sync_run_from
+            ;;
+        push)
+            _cc_sync_run_to
+            ;;
+        esac
+        ;;
+    *)
+        echo "Error: invalid subcommand: $dispatch_command"
+        return 1
+        ;;
+    esac
 }
