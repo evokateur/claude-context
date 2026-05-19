@@ -1,14 +1,14 @@
 # Claude Code project context sync and backup
 
-Shell functions for syncing Claude Code project context across machines, with local backups.
+Shell functions for syncing Claude Code project context across machines and/or backing up or restoring context.
 
 ## Syncing contexts between machines
 
-`cc-sync` syncs a context directory in `~/.claude/projects` between machines. by default pulling from remote to local (`cc-sync pull`). 
+`cc-sync` syncs a context directory in `~/.claude/projects` between machines, by default pulling from remote to local (shorthand for `cc-sync pull`)
 
-`cc-sync push` pushes the local context to the remote machine. 
+`cc-sync push` pushes context to a remote machine. 
 
-The functions derive remote context directory names from the current working directory, accounting for home directory absolute path differences by OS. As an example, `~/code/catbutt` will have context in
+The remote context directory is derived from the current working directory, accounting for absolute path differences by OS. For example, `~/code/catbutt` will have context in
 
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
 - `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
@@ -16,7 +16,7 @@ The functions derive remote context directory names from the current working dir
 If the project path relative to `$HOME` is the same on both machines, only the host is needed:
 
 ```sh
-~/code/catbutt$ cc-sync [pull] xicamatl
+~/code/catbutt$ cc-sync xicamatl
 ```
 
 An explicit remote path is necessary when the relative directory differs:
@@ -31,7 +31,8 @@ An explicit path can be used with `localhost` to retrieve the context of a renam
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
 
-Paths inside or relative to `$HOME` are assumed. The local CWD must be inside `$HOME`, and paths after `hostname:` must be relative to `$HOME`.
+>[!important]
+>Paths inside or relative to `$HOME` are assumed. The local CWD must be inside `$HOME`, and paths after `hostname:` must be relative to `$HOME` (not absolute)
 
 `pull` and `push` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will make the destination match the source exactly.
 
@@ -43,7 +44,7 @@ To *push* the local context to a remote:
 ~/code/catbutt$ cc-sync push xicamatl
 ```
 
-As with `pull`, the remote relative path can be explicit.
+As with `pull`, the relative remote path can be specified explicitly.
 
 ## Functions
 
