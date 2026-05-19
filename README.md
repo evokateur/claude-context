@@ -31,6 +31,8 @@ An explicit path can be used with `localhost` to retrieve the context of a renam
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
 
+Paths inside or relative to `$HOME` are assumed. The local CWD must be inside `$HOME`, and paths after `hostname:` must be relative to `$HOME`.
+
 `pull` and `push` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will make the destination match the source exactly.
 
 A backup of the destination context directory is created before syncing, except with `--dry-run`.
