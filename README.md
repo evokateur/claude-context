@@ -4,46 +4,47 @@ Shell functions for syncing Claude Code project context across machines, with lo
 
 ## Syncing contexts between machines
 
-`cc-sync` syncs a context directory in `~/.claude/projects` between machines. `cc-sync pull` pulls from a remote machine to the local machine. `cc-sync push` pushes the local context to the remote machine. `cc-sync <host[:path]>` remains shorthand for `cc-sync pull <host[:path]>`. The functions derive context directory names from the current working directory, accounting for OS home directory path differences.
+`cc-sync` syncs a context directory in `~/.claude/projects` between machines. by default pulling from the remote to local (implicit `cc-sync pull`). 
 
-For example, `~/code/catbutt` will have context at
+`cc-sync push` pushes the local context to the remote machine. 
+
+The functions derive remote context directory names from the current working directory, accounting for home directory absolute path differences by OS. As an example, `~/code/catbutt` will have context in
 
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
 - `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
 
-If the relative path is the same on both machines, only the host is needed:
+If the path relative to the home directory is the same on both machines, only the host is needed:
 
 ```sh
-~/code/catbutt$ cc-sync pull xicamatl
+~/code/catbutt$ cc-sync [pull] xicamatl
 ```
+
+> [!warning]
+> There is currently an oversight in that the username is assumed to be the same on both machines
 
 A remote path is necessary when the relative directory differs:
 
 ```sh
-~/code/catbutt$ cc-sync pull xicamatl:projects/catbutt
+~/code/catbutt$ cc-sync xicamatl:projects/catbutt
 ```
 
 To retrieve the context of a renamed project:
 
 ```sh
-~/code/cul-de-chat$ cc-sync pull localhost:code/catbutt
+~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
 
-By default (`rsync` and therefore) these sync commands are additive, consolidating context across machines. Use `--delete` to make the destination match the source exactly.
+`pull` and `push` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will make the destination match the source exactly.
 
 A backup of the destination context directory is created before syncing, except with `--dry-run`.
 
-To push the local context to the remote machine:
+To push the local context to ai remote machine:
 
 ```sh
 ~/code/catbutt$ cc-sync push xicamatl
 ```
 
-If the target project path differs on the remote machine:
-
-```sh
-~/code/catbutt$ cc-sync push xicamatl:projects/catbutt
-```
+As with `pull`, the remote path can be explicitly specified.
 
 ## Functions
 
