@@ -25,7 +25,7 @@ An explicit remote path is necessary when the relative directory differs:
 ~/code/catbutt$ cc-sync xicamatl:projects/catbutt
 ```
 
-To retrieve the context of a renamed project:
+An explicit path can be used with `localhost` to retrieve the context of a renamed project:
 
 ```sh
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
