@@ -44,7 +44,7 @@ To *push* the local context to a remote:
 ~/code/catbutt$ cc-sync push xicamatl
 ```
 
-As with `pull`, the remote path can be explicitly specified.
+As with `pull`, the remote relative path can be given explicitly.
 
 ## Functions
 
