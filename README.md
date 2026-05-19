@@ -38,7 +38,7 @@ To retrieve the context of a renamed project:
 
 A backup of the destination context directory is created before syncing, except with `--dry-run`.
 
-To push the local context to ai remote machine:
+To *push* the local context to a remote:
 
 ```sh
 ~/code/catbutt$ cc-sync push xicamatl
