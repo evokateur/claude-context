@@ -13,7 +13,7 @@ The functions derive remote context directory names from the current working dir
 - `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
 - `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
 
-If the path relative to the home directory is the same on both machines, only the host is needed:
+If the project path relative to `$HOME` is the same on both machines, only the host is needed:
 
 ```sh
 ~/code/catbutt$ cc-sync [pull] xicamatl
@@ -41,7 +41,7 @@ To *push* the local context to a remote:
 ~/code/catbutt$ cc-sync push xicamatl
 ```
 
-As with `pull`, the remote relative path can be given explicitly.
+As with `pull`, the remote relative path can be explicit.
 
 ## Functions
 
