@@ -22,7 +22,7 @@ If the path relative to the home directory is the same on both machines, only th
 > [!warning]
 > There is currently an oversight in that the username is assumed to be the same on both machines
 
-A remote path is necessary when the relative directory differs:
+An explicit remote path is necessary when the relative directory differs:
 
 ```sh
 ~/code/catbutt$ cc-sync xicamatl:projects/catbutt
