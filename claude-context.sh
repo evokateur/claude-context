@@ -11,6 +11,15 @@ _cc_sync_set_vars() {
 
     backup_dir="$HOME/.claude/backups/projects"
     current_dir=$(pwd)
+
+    case "$current_dir" in
+    "$HOME" | "$HOME"/*) ;;
+    *)
+        echo "Error: Paths outside \$HOME are not supported."
+        return 1
+        ;;
+    esac
+
     local_context_dir=$(_cc_sync_context_dir_for_path "$current_dir")
     local_context_path="$HOME/.claude/projects/$local_context_dir"
 }
@@ -188,6 +197,13 @@ _cc_sync_set_remote_spec_vars() {
     if [[ "$remote_spec" == *:* ]]; then
         remote_host="${remote_spec%%:*}"
         relative_path="${remote_spec#*:}"
+
+        case "$relative_path" in
+        /*)
+            echo "Error: Paths outside \$HOME are not supported."
+            return 1
+            ;;
+        esac
     else
         remote_host="$remote_spec"
         relative_path="${current_dir#$HOME/}"
