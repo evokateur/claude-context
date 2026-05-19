@@ -4,7 +4,7 @@ Shell functions for syncing Claude Code project context across machines, with lo
 
 ## Syncing contexts between machines
 
-`cc-sync` syncs a context directory in `~/.claude/projects` between machines. by default pulling from the remote to local (implicit `cc-sync pull`). 
+`cc-sync` syncs a context directory in `~/.claude/projects` between machines. by default pulling from remote to local (`cc-sync pull`). 
 
 `cc-sync push` pushes the local context to the remote machine. 
 
