@@ -125,11 +125,11 @@ _cc_sync_remote_backup() {
     local timestamp remote_backup_dir remote_backup_file
 
     timestamp=$(date +%Y%m%d-%H%M%S)
-    remote_backup_dir='$HOME/.claude/backups/projects'
+    remote_backup_dir="\$HOME/.claude/backups/projects"
     remote_backup_file="\$HOME/.claude/backups/projects/${remote_context_dir}_${timestamp}.tar.gz"
 
     echo "Creating backup of remote context directory on $remote_host..."
-    ssh "$remote_host" "mkdir -p $remote_backup_dir && tar czf '$remote_backup_file' -C '\$HOME/.claude/projects' './$remote_context_dir/'" || return 1
+    ssh "$remote_host" "mkdir -p \"$remote_backup_dir\" && tar czf \"$remote_backup_file\" -C \"\$HOME/.claude/projects\" './$remote_context_dir/'" || return 1
 
     echo "Remote backup created: ${remote_host}:${remote_backup_file#\$HOME/}"
 }
