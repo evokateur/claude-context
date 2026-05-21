@@ -266,6 +266,12 @@ _cc_sync_run_to() {
     local remote_context_dir remote_context_path sync_source sync_destination
     local remote_context_exists=false
 
+    if [ ! -d "$local_context_path" ]; then
+        echo "Error: Claude context directory does not exist on this machine"
+        echo "Expected path: $local_context_path"
+        return 1
+    fi
+
     _cc_sync_set_remote_context_vars "$remote_host" "$relative_path" || return 1
 
     echo "Checking if Claude context directory exists on $remote_host..."
