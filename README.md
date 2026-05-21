@@ -49,11 +49,11 @@ As with `pull`, the relative remote path can be specified explicitly.
 ## Functions
 
 - `cc-sync [pull|push] [rsync-options] <host[:path]>`
-  - Wraps `rsync -av` with passthrough of recognized rsync options:
+  - Wraps `rsync -av` with passthrough of the following rsync options:
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: remove destination context not present in the source
     - `-z`, `--compress`: compress data during transfer
-  - Context directories determined with tilde expansions of CWD relative to  `~/`
+  - Context directory is determined by current working directory
   - Assumes same relative path on remote unless `:path` is specified
   - If `pull` or `push` is omitted, defaults to `pull`
   - `cc-sync push` creates the remote context directory if it does not already exist.
