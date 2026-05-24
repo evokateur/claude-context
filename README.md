@@ -41,7 +41,7 @@ To sync the local context to a remote:
 ~/code/catbutt$ cc-sync to xicamatl
 ```
 
-As with `cc-sync from`, the relative remote path can be specified.
+As with `cc-sync [from]`, the remote relative path can be specified.
 
 `cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will clobber the destination with the source.
 
