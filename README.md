@@ -4,7 +4,7 @@ Shell functions for syncing Claude Code project context across machines and/or b
 
 ## Syncing contexts between machines
 
-`cc-sync` (or `cc-sync from`) syncs context in `~/.claude/projects` for the CWD from a remote.
+`cc-sync` (or `cc-sync from`) syncs the context for the CWD in `~/.claude/projects` from a remote.
 
 `cc-sync to` syncs context for the CWD to a remote.
 
