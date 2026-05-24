@@ -4,8 +4,7 @@ _cc_sync_context_dir_for_path() {
 
 _cc_sync_set_vars() {
     if [ ! -d "$HOME/.claude/projects" ]; then
-        echo "Error: $HOME/.claude/projects directory does not exist"
-        echo "Is Claude Code installed?"
+        echo "Missing $HOME/.claude/projects directory."
         return 1
     fi
 
@@ -15,7 +14,7 @@ _cc_sync_set_vars() {
     case "$current_dir" in
     "$HOME" | "$HOME"/*) ;;
     *)
-        echo "Error: the local CWD must be inside \$HOME."
+        echo "The local CWD must be within \$HOME."
         return 1
         ;;
     esac
@@ -32,14 +31,14 @@ _cc_sync_set_remote_context_vars() {
 
     echo "Checking SSH connectivity to $remote_host..."
     if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$remote_host" exit 2>/dev/null; then
-        echo "Error: Cannot connect to $remote_host over SSH"
+        echo "Cannot establish SSH connection to $remote_host."
         return 1
     fi
 
     echo "Detecting remote home directory..."
     remote_home=$(ssh "$remote_host" "echo \$HOME" 2>/dev/null)
     if [ -z "$remote_home" ]; then
-        echo "Error: Could not determine remote home directory"
+        echo "Could not determine remote home directory."
         return 1
     fi
 
@@ -70,8 +69,7 @@ _cc_sync_backup() {
     local timestamp backup_file
 
     if [ ! -d "$local_context_path" ]; then
-        echo "Error: Claude context directory does not exist on this machine"
-        echo "Expected path: $local_context_path"
+        echo "$local_context_path does not exist on this machine"
         return 1
     fi
 
@@ -96,7 +94,7 @@ _cc_sync_pop() {
     latest_backup=$(ls -1 "$backup_dir/${local_context_dir}_"*.tar.gz 2>/dev/null | sort -r | head -1)
 
     if [ -z "$latest_backup" ]; then
-        echo "Error: No backups found for $local_context_dir"
+        echo "No backups found for $local_context_dir"
         return 1
     fi
 
@@ -149,9 +147,9 @@ _cc_sync_parse_dispatch_args() {
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-        pull | push)
+        from | to)
             if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
-                echo "Error: multiple subcommands specified"
+                echo "Multiple subcommands specified."
                 return 1
             fi
             dispatch_command="$1"
@@ -159,7 +157,7 @@ _cc_sync_parse_dispatch_args() {
             ;;
         backup | restore | pop)
             if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
-                echo "Error: multiple subcommands specified"
+                echo "Multiple subcommands specified."
                 return 1
             fi
             dispatch_command="$1"
@@ -176,7 +174,7 @@ _cc_sync_parse_dispatch_args() {
             ;;
         *)
             if [ -n "$remote_spec" ]; then
-                echo "Error: expected exactly one remote host argument"
+                echo "Expected exactly one remote host argument."
                 return 1
             fi
             remote_spec="$1"
@@ -190,7 +188,7 @@ _cc_sync_set_remote_spec_vars() {
     local current_dir="$1"
 
     if [ -z "$remote_spec" ]; then
-        echo "Error: remote host argument is required"
+        echo "Remote host argument is required."
         return 1
     fi
 
@@ -200,7 +198,7 @@ _cc_sync_set_remote_spec_vars() {
 
         case "$relative_path" in
         /*)
-            echo "Error: remote path must be relative to \$HOME."
+            echo "Remote path must be relative to \$HOME."
             return 1
             ;;
         esac
@@ -225,15 +223,13 @@ _cc_sync_run_from() {
 
     echo "Checking if Claude context directory exists on $remote_host..."
     if ! _cc_sync_remote_context_exists "$remote_host" "$remote_context_path"; then
-        echo "Error: Claude context directory does not exist on $remote_host"
-        echo "Expected path: $remote_context_path"
+        echo "$remote_context_path does not exist on $remote_host"
         return 1
     fi
 
     sync_source="${remote_host}:${remote_context_path}/"
     sync_destination="${local_context_path}/"
 
-    echo "Remote host: $remote_host"
     echo "Remote context directory: $remote_context_path"
     echo "Local context directory: $local_context_path"
     echo ""
@@ -267,8 +263,7 @@ _cc_sync_run_to() {
     local remote_context_exists=false
 
     if [ ! -d "$local_context_path" ]; then
-        echo "Error: Claude context directory does not exist on this machine"
-        echo "Expected path: $local_context_path"
+        echo "$local_context_path does not exist on this machine"
         return 1
     fi
 
@@ -311,13 +306,13 @@ cc-sync() {
     local sync_mode remote_host relative_path
 
     if [ $# -eq 0 ]; then
-        echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+        echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
         echo "       cc-sync [backup|restore|pop]"
         return 1
     fi
 
     _cc_sync_parse_dispatch_args "$@" || {
-        echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+        echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
         echo "       cc-sync [backup|restore|pop]"
         return 1
     }
@@ -325,11 +320,11 @@ cc-sync() {
     case $dispatch_command in
     backup | restore | pop)
         if [ "${#rsync_options[@]}" -gt 0 ]; then
-            echo "Error: rsync options are only valid with pull and push"
+            echo "Unexpected rsync option."
             return 1
         fi
         if [ -n "$remote_spec" ]; then
-            echo "Error: $dispatch_command does not accept a remote host argument"
+            echo "Unexpected remote host argument."
             return 1
         fi
         _cc_sync_set_vars || return 1
@@ -345,29 +340,29 @@ cc-sync() {
             ;;
         esac
         ;;
-    "" | pull | push)
+    "" | from | to)
         _cc_sync_set_vars || return 1
         sync_mode="$dispatch_command"
         if [ -z "$sync_mode" ]; then
-            sync_mode="pull"
+            sync_mode="from"
         fi
         if [ -z "$remote_spec" ]; then
-            echo "Error: remote host argument is required"
-            echo "Usage: cc-sync [pull|push] [rsync-options] <host[:path]>"
+            echo "Remote host argument is required"
+            echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
             return 1
         fi
         _cc_sync_set_remote_spec_vars "$current_dir" || return 1
         case $sync_mode in
-        pull)
+        from)
             _cc_sync_run_from "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "${rsync_options[@]}"
             ;;
-        push)
+        to)
             _cc_sync_run_to "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "${rsync_options[@]}"
             ;;
         esac
         ;;
     *)
-        echo "Error: invalid subcommand: $dispatch_command"
+        echo "Invalid subcommand: $dispatch_command"
         return 1
         ;;
     esac

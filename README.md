@@ -4,59 +4,60 @@ Shell functions for syncing Claude Code project context across machines and/or b
 
 ## Syncing contexts between machines
 
-`cc-sync` syncs a context directory in `~/.claude/projects` between machines, by default pulling from remote to local (shorthand for `cc-sync pull`)
+`cc-sync` (or `cc-sync from`) syncs context in `~/.claude/projects` for the CWD from a remote.
 
-`cc-sync push` pushes context to a remote machine. 
+`cc-sync to` syncs context for the CWD to a remote.
 
-The remote context directory is derived from the current working directory, accounting for absolute path differences by OS. For example, `~/code/catbutt` will have context in
+Since the remote path is determined relative to `$HOME`, the CWD must be within `$HOME`.
 
-- `~/.claude/projects/-home-wesley-code-catbutt` on Linux and
-- `~/.claude/projects/-Users-wesley-code-catbutt` on macOS.
+The remote OS is taken into account when determining the context directory; context for `~/code/catbutt` would be in
 
-If the project path relative to `$HOME` is the same on both machines, only the host is needed:
+- `~/.claude/projects/-home-username-code-catbutt` on Linux and
+- `~/.claude/projects/-Users-username-code-catbutt` on macOS.
+
+Context for the same relative path on the remote is assumed:
 
 ```sh
-~/code/catbutt$ cc-sync xicamatl
+~/code/catbutt$ cc-sync xicamatl 
+# same as:
+~/code/catbutt$ cc-sync xicamatl:code/catbutt
 ```
 
-An explicit remote path is necessary when the relative directory differs:
+The remote relative path can be specified if different:
 
 ```sh
 ~/code/catbutt$ cc-sync xicamatl:projects/catbutt
 ```
 
-An explicit path can be used with `localhost` to retrieve the context of a renamed project:
+A relative path can be used with `localhost` to retrieve the context of a renamed project:
 
 ```sh
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
 
->[!important]
->Paths inside or relative to `$HOME` are assumed. The local CWD must be inside `$HOME`, and paths after `hostname:` must be relative to `$HOME` (not absolute)
-
-`pull` and `push` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will make the destination match the source exactly.
-
-A backup of the destination context directory is created before syncing, except with `--dry-run`.
-
-To *push* the local context to a remote:
+To sync the local context to a remote:
 
 ```sh
-~/code/catbutt$ cc-sync push xicamatl
+~/code/catbutt$ cc-sync to xicamatl
 ```
 
-As with `pull`, the relative remote path can be specified explicitly.
+As with `cc-sync from`, the relative remote path can be specified.
+
+`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will clobber the destination with the source.
+
+A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
 ## Functions
 
-- `cc-sync [pull|push] [rsync-options] <host[:path]>`
-  - Wraps `rsync -av` with passthrough of the following rsync options:
+- `cc-sync [from|to] [rsync-options] <host[:path]>`
+  - Wraps `rsync -av` with passthrough of the following options:
     - `--dry-run`, `-n`: preview what would be transferred
-    - `--delete`: remove destination context not present in the source
+    - `--delete`: clobber the destination, removing context not present in the source
     - `-z`, `--compress`: compress data during transfer
-  - Context directory is determined by current working directory
-  - Assumes same relative path on remote unless `:path` is specified
-  - If `pull` or `push` is omitted, defaults to `pull`
-  - `cc-sync push` creates the remote context directory if it does not already exist.
+  - Local context directory determined by CWD
+  - Remote context determined by the same relative path unless `:path` is specified
+  - If `from` or `to` is omitted, `from` is assumed
+  - `cc-sync to` creates the remote context directory if it doesn't exist
 
 - `cc-sync backup`
   - Creates a context backup for current working directory
@@ -81,4 +82,4 @@ As with `pull`, the relative remote path can be specified explicitly.
 
 ## Setup
 
-- Source `claude-context.sh` path in `.zshrc` or `.bashrc` etc.)
+- Source `claude-context.sh` path in `.zshrc` or `.bashrc` etc.
