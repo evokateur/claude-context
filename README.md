@@ -47,6 +47,14 @@ As with `cc-sync [from]`, the remote relative path can be specified.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
+## Listing context directory contents
+
+`cc-sync list` shows the local context directory for the CWD with `ls -l -t`.
+
+`cc-sync list host` shows the matching remote context directory with `ls -l -t`.
+
+`cc-sync ls` and `cc-sync ls host` are aliases for the same commands.
+
 ## Functions
 
 - `cc-sync [from|to] [rsync-options] <host[:path]>`
@@ -61,6 +69,7 @@ A backup of existing destination context is created before syncing when files wo
 
 - `cc-sync backup`
   - Creates a context backup for current working directory
+  - Backups are stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
 
 - `cc-sync restore`
   - Restores the most recent backup for current working directory without deleting the backup
@@ -68,7 +77,10 @@ A backup of existing destination context is created before syncing when files wo
 - `cc-sync pop`
   - Restores the most recent backup for current working directory and deletes the backup file
 
-- Backups are stored in `~/.claude/backups/projects/` as `{context-dir}_{timestamp}.tar.gz`
+- `cc-sync [list|ls] [host[:path]]`
+  - Lists the local or remote context directory for the current working directory
+  - Uses `ls -l -t` to show newest entries first
+  - If `host[:path]` is omitted, lists the local context directory
 
 ## Requirements
 

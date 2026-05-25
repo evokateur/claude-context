@@ -62,6 +62,34 @@ _cc_sync_create_remote_context_path() {
     ssh "$remote_host" "mkdir -p '$remote_context_path'"
 }
 
+_cc_sync_list_local() {
+    local local_context_path="$1"
+
+    if [ ! -d "$local_context_path" ]; then
+        echo "$local_context_path does not exist on this machine"
+        return 1
+    fi
+
+    echo "Local context directory: $local_context_path"
+    ls -l -t "$local_context_path"
+}
+
+_cc_sync_list_remote() {
+    local remote_host="$1"
+    local relative_path="$2"
+
+    _cc_sync_set_remote_context_vars "$remote_host" "$relative_path" || return 1
+
+    echo "Checking if Claude context directory exists on $remote_host..."
+    if ! _cc_sync_remote_context_exists "$remote_host" "$remote_context_path"; then
+        echo "$remote_context_path does not exist on $remote_host"
+        return 1
+    fi
+
+    echo "Remote context directory: $remote_context_path"
+    ssh "$remote_host" "ls -l -t '$remote_context_path'"
+}
+
 _cc_sync_backup() {
     local local_context_path="$1"
     local local_context_dir="$2"
@@ -148,6 +176,14 @@ _cc_sync_parse_dispatch_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
         from | to)
+            if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
+                echo "Multiple subcommands specified."
+                return 1
+            fi
+            dispatch_command="$1"
+            shift
+            ;;
+        list | ls)
             if [ -n "$dispatch_command" ] && [ "$dispatch_command" != "$1" ]; then
                 echo "Multiple subcommands specified."
                 return 1
@@ -308,12 +344,14 @@ cc-sync() {
     if [ $# -eq 0 ]; then
         echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
         echo "       cc-sync [backup|restore|pop]"
+        echo "       cc-sync [list|ls] [host[:path]]"
         return 1
     fi
 
     _cc_sync_parse_dispatch_args "$@" || {
         echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
         echo "       cc-sync [backup|restore|pop]"
+        echo "       cc-sync [list|ls] [host[:path]]"
         return 1
     }
 
@@ -340,6 +378,19 @@ cc-sync() {
             ;;
         esac
         ;;
+    list | ls)
+        if [ "${#rsync_options[@]}" -gt 0 ]; then
+            echo "Unexpected rsync option."
+            return 1
+        fi
+        _cc_sync_set_vars || return 1
+        if [ -z "$remote_spec" ]; then
+            _cc_sync_list_local "$local_context_path"
+        else
+            _cc_sync_set_remote_spec_vars "$current_dir" || return 1
+            _cc_sync_list_remote "$remote_host" "$relative_path"
+        fi
+        ;;
     "" | from | to)
         _cc_sync_set_vars || return 1
         sync_mode="$dispatch_command"
@@ -349,6 +400,7 @@ cc-sync() {
         if [ -z "$remote_spec" ]; then
             echo "Remote host argument is required"
             echo "Usage: cc-sync [from|to] [rsync-options] <host[:path]>"
+            echo "       cc-sync [list|ls] [host[:path]]"
             return 1
         fi
         _cc_sync_set_remote_spec_vars "$current_dir" || return 1
