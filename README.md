@@ -1,6 +1,6 @@
 # Claude Code project context sync and backup
 
-Shell functions for syncing Claude Code project context across machines and/or backing up or restoring context.
+Shell functions for syncing and backing up Claude Code project context across machines.
 
 ## Syncing contexts between machines
 
