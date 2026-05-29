@@ -329,7 +329,8 @@ _cc_sync_prepare_bounded_manifest() {
     count=$(wc -l < "$bounded_manifest_path")
     bounded_manifest_count="${count//[[:space:]]/}"
 
-    echo "Selected ${bounded_manifest_count} files."
+    echo "Selected ${bounded_manifest_count} files:"
+    cat "$bounded_manifest_path"
 
     if [ "$bounded_manifest_count" -eq 0 ]; then
         echo "Nothing matched. Nothing to sync."
