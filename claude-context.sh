@@ -170,11 +170,11 @@ _cc_sync_has_files_to_sync() {
 _cc_sync_validate_modified_within_days() {
     case "$1" in
     '' | *[!0-9]*)
-        echo "--modified-within-days requires a positive integer."
+        echo "--modified-within requires a positive integer."
         return 1
         ;;
     0)
-        echo "--modified-within-days requires a positive integer."
+        echo "--modified-within requires a positive integer."
         return 1
         ;;
     esac
@@ -219,7 +219,7 @@ _cc_sync_write_local_manifest() {
         modified_within_days)
             find . -type f -mtime -"${selector_value}" -print
             ;;
-        find_expr)
+        find_args)
             eval "find . ${selector_value}"
             ;;
         *)
@@ -258,7 +258,7 @@ case "$selector_mode" in
 modified_within_days)
     find . -type f -mtime -"${selector_value}" -print > "$raw_manifest_path"
     ;;
-find_expr)
+find_args)
     eval "find . ${selector_value}" > "$raw_manifest_path"
     ;;
 *)
@@ -389,13 +389,13 @@ _cc_sync_parse_dispatch_args() {
             rsync_options+=("$1")
             shift
             ;;
-        --modified-within-days)
+        --modified-within)
             if [ -n "$bounded_selector_mode" ]; then
                 echo "Bounded sync selectors are mutually exclusive."
                 return 1
             fi
             if [ $# -lt 2 ]; then
-                echo "--modified-within-days requires a value."
+                echo "--modified-within requires a value."
                 return 1
             fi
             _cc_sync_validate_modified_within_days "$2" || return 1
@@ -403,16 +403,16 @@ _cc_sync_parse_dispatch_args() {
             bounded_selector_value="$2"
             shift 2
             ;;
-        --find-expr)
+        --find-args)
             if [ -n "$bounded_selector_mode" ]; then
                 echo "Bounded sync selectors are mutually exclusive."
                 return 1
             fi
             if [ $# -lt 2 ]; then
-                echo "--find-expr requires a value."
+                echo "--find-args requires a value."
                 return 1
             fi
-            bounded_selector_mode="find_expr"
+            bounded_selector_mode="find_args"
             bounded_selector_value="$2"
             shift 2
             ;;
