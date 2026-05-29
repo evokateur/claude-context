@@ -43,24 +43,21 @@ To sync the local context to a remote:
 
 As with `cc-sync [from]`, the remote relative path can be specified.
 
-`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will clobber the destination with the source.
+`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option (without `--files-from`, see below) will clobber the destination with the source.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
-### Bounded sync
+### Limiting what files from the source are synced
 
-Bounded sync limits which files are copied without pruning the destination.
-
-- `--modified-within-days <days>` is shorthand for `find . -type f -mtime -<days>`
-- `--find-expr '<expression>'` appends the expression after `find .`
-- `--modified-within-days` and `--find-expr` are mutually exclusive
-- if nothing matches, `cc-sync` prints a no-op message and exits successfully without invoking `rsync`
-- if `--delete` is also passed, deletion still follows normal `rsync` semantics
+- `--find-args '<expression>'` writes the output of `find <expression>` to a file for `--files-from` in the `rsync` command
+- `--modified-within <days>` is equivalent to `--find-args '-type f -mtime -<days>'`
+- `--modified-within` and `--find-args` are mutually exclusive
+- `--delete` with either will *not* delete files not in the `find` output
 
 Examples:
 
 ```sh
-~/code/catbutt$ cc-sync to --modified-within-days 7 xicamatl
+~/code/catbutt$ cc-sync --modified-within-days 3 xicamatl
 ~/code/catbutt$ cc-sync to --find-expr "-type f -name '*.jsonl'" --dry-run xicamatl
 ```
 
