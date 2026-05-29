@@ -2,7 +2,7 @@
 
 Shell functions for syncing and backing up Claude Code project context across machines.
 
-## Syncing contexts between machines
+## Syncing context between machines
 
 `cc-sync` (or `cc-sync from`) syncs the context for the CWD in `~/.claude/projects` from a remote.
 
@@ -49,7 +49,7 @@ A backup of existing destination context is created before syncing when files wo
 
 ### Limiting what files from the source are synced
 
-- `--find-args '<expression>'` writes the output of `find <expression>` to a file for `--files-from` in the `rsync` command
+- `--find-args '<expression>'` uses the output of `find <expression>` for `--files-from <file>` in the `rsync` command
 - `--modified-within <days>` is equivalent to `--find-args '-type f -mtime -<days>'`
 - `--modified-within` and `--find-args` are mutually exclusive
 - `--delete` with either will *not* delete files not in the `find` output
