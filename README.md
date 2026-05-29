@@ -47,6 +47,23 @@ As with `cc-sync [from]`, the remote relative path can be specified.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
+### Bounded sync
+
+Bounded sync limits which files are copied without pruning the destination.
+
+- `--modified-within-days <days>` is shorthand for `find . -type f -mtime -<days>`
+- `--find-expr '<expression>'` appends the expression after `find .`
+- `--modified-within-days` and `--find-expr` are mutually exclusive
+- if nothing matches, `cc-sync` prints a no-op message and exits successfully without invoking `rsync`
+- if `--delete` is also passed, deletion still follows normal `rsync` semantics
+
+Examples:
+
+```sh
+~/code/catbutt$ cc-sync to --modified-within-days 7 xicamatl
+~/code/catbutt$ cc-sync to --find-expr "-type f -name '*.jsonl'" --dry-run xicamatl
+```
+
 ## Listing context directory contents
 
 `cc-sync list` shows the local context directory for the CWD with `ls -l -t`.
@@ -62,6 +79,9 @@ A backup of existing destination context is created before syncing when files wo
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: clobber the destination, removing context not present in the source
     - `-z`, `--compress`: compress data during transfer
+  - Bounded sync options:
+    - `--modified-within-days <days>`: select regular files matching `find . -type f -mtime -<days>`
+    - `--find-expr '<expression>'`: select files using `find . <expression>`
   - Local context directory determined by CWD
   - Remote context determined by the same relative path unless `:path` is specified
   - If `from` or `to` is omitted, `from` is assumed
