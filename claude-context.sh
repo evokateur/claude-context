@@ -186,7 +186,7 @@ _cc_sync_normalize_list_file() {
     local base_path="${3:-}"
     local relative_path
 
-    : > "$output_path"
+    : >"$output_path"
 
     while IFS= read -r relative_path; do
         relative_path="${relative_path#./}"
@@ -199,8 +199,8 @@ _cc_sync_normalize_list_file() {
             continue
         fi
 
-        printf '%s\n' "$relative_path" >> "$output_path"
-    done < "$input_path"
+        printf '%s\n' "$relative_path" >>"$output_path"
+    done <"$input_path"
 }
 
 _cc_sync_write_local_list_file() {
@@ -214,7 +214,7 @@ _cc_sync_write_local_list_file() {
     (
         cd "$context_path" || exit 1
         eval "find . ${find_args}"
-    ) > "$raw_output_path" || {
+    ) >"$raw_output_path" || {
         rm -f "$raw_output_path"
         return 1
     }
@@ -232,7 +232,7 @@ _cc_sync_write_remote_list_file() {
 
     raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || return 1
 
-    ssh "$remote_host" sh -s -- "$remote_context_path" "$find_args" <<'EOF' > "$raw_output_path" || {
+    ssh "$remote_host" sh -s -- "$remote_context_path" "$find_args" <<'EOF' >"$raw_output_path" || {
 context_path="$1"
 find_args="$2"
 raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || exit 1
@@ -298,7 +298,7 @@ _cc_sync_prepare_list_file() {
         ;;
     esac
 
-    file_count=$(wc -l < "$list_file_path")
+    file_count=$(wc -l <"$list_file_path")
     file_count="${file_count//[[:space:]]/}"
 
     echo "Selected ${file_count} files:"
@@ -585,7 +585,7 @@ cc-sync() {
     case $dispatch_command in
     backup | restore | pop)
         if [ -n "$find_args" ]; then
-            echo "File selection is only supported with from/to."
+            echo "File selection is only supported for sync operations."
             return 1
         fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
@@ -611,7 +611,7 @@ cc-sync() {
         ;;
     list | ls)
         if [ -n "$find_args" ]; then
-            echo "File selection is only supported with from/to."
+            echo "File selection is only supported for sync operations."
             return 1
         fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
