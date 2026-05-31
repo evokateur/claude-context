@@ -57,8 +57,8 @@ A backup of existing destination context is created before syncing when files wo
 Examples:
 
 ```sh
-~/code/catbutt$ cc-sync --modified-within-days 3 xicamatl
-~/code/catbutt$ cc-sync to --find-expr "-type f -name '*.jsonl'" --dry-run xicamatl
+~/code/catbutt$ cc-sync --modified-within 3 xicamatl
+~/code/catbutt$ cc-sync to --find-args "-type f -name '*.jsonl'" --dry-run xicamatl
 ```
 
 ## Listing context directory contents
@@ -76,9 +76,9 @@ Examples:
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: clobber the destination, removing context not present in the source
     - `-z`, `--compress`: compress data during transfer
-  - Bounded sync options:
-    - `--modified-within-days <days>`: select regular files matching `find . -type f -mtime -<days>`
-    - `--find-expr '<expression>'`: select files using `find . <expression>`
+  - File selection options:
+    - `--modified-within <days>`: select regular files matching `find . -type f -mtime -<days>`
+    - `--find-args '<expression>'`: select files using `find . <expression>`
   - Local context directory determined by CWD
   - Remote context determined by the same relative path unless `:path` is specified
   - If `from` or `to` is omitted, `from` is assumed

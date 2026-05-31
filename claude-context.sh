@@ -180,7 +180,7 @@ _cc_sync_validate_modified_within_days() {
     esac
 }
 
-_cc_sync_normalize_manifest() {
+_cc_sync_normalize_list_file() {
     local input_path="$1"
     local output_path="$2"
     local base_path="${3:-}"
@@ -203,70 +203,43 @@ _cc_sync_normalize_manifest() {
     done < "$input_path"
 }
 
-_cc_sync_write_local_manifest() {
+_cc_sync_write_local_list_file() {
     local context_path="$1"
-    local manifest_path="$2"
-    local selector_mode="$3"
-    local selector_value="$4"
-    local raw_manifest_path
+    local output_path="$2"
+    local find_args="$3"
+    local raw_output_path
 
-    raw_manifest_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-local-find.XXXXXX") || return 1
+    raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-local-find.XXXXXX") || return 1
 
     (
         cd "$context_path" || exit 1
-
-        case "$selector_mode" in
-        modified_within_days)
-            find . -type f -mtime -"${selector_value}" -print
-            ;;
-        find_args)
-            eval "find . ${selector_value}"
-            ;;
-        *)
-            echo "Unsupported bounded selector: $selector_mode"
-            exit 1
-            ;;
-        esac
-    ) > "$raw_manifest_path" || {
-        rm -f "$raw_manifest_path"
+        eval "find . ${find_args}"
+    ) > "$raw_output_path" || {
+        rm -f "$raw_output_path"
         return 1
     }
 
-    _cc_sync_normalize_manifest "$raw_manifest_path" "$manifest_path" "$context_path"
-    rm -f "$raw_manifest_path"
+    _cc_sync_normalize_list_file "$raw_output_path" "$output_path" "$context_path"
+    rm -f "$raw_output_path"
 }
 
-_cc_sync_write_remote_manifest() {
+_cc_sync_write_remote_list_file() {
     local remote_host="$1"
     local remote_context_path="$2"
-    local manifest_path="$3"
-    local selector_mode="$4"
-    local selector_value="$5"
-    local raw_manifest_path
+    local output_path="$3"
+    local find_args="$4"
+    local raw_output_path
 
-    raw_manifest_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || return 1
+    raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || return 1
 
-    ssh "$remote_host" sh -s -- "$remote_context_path" "$selector_mode" "$selector_value" <<'EOF' > "$raw_manifest_path" || {
+    ssh "$remote_host" sh -s -- "$remote_context_path" "$find_args" <<'EOF' > "$raw_output_path" || {
 context_path="$1"
-selector_mode="$2"
-selector_value="$3"
-raw_manifest_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || exit 1
+find_args="$2"
+raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || exit 1
 
 cd "$context_path" || exit 1
 
-case "$selector_mode" in
-modified_within_days)
-    find . -type f -mtime -"${selector_value}" -print > "$raw_manifest_path"
-    ;;
-find_args)
-    eval "find . ${selector_value}" > "$raw_manifest_path"
-    ;;
-*)
-    echo "Unsupported bounded selector: $selector_mode" >&2
-    rm -f "$raw_manifest_path"
-    exit 1
-    ;;
-esac
+eval "find . ${find_args}" > "$raw_output_path"
 
 while IFS= read -r relative_path; do
     relative_path="${relative_path#./}"
@@ -280,70 +253,69 @@ while IFS= read -r relative_path; do
     fi
 
     printf '%s\n' "$relative_path"
-done < "$raw_manifest_path"
+done < "$raw_output_path"
 
-rm -f "$raw_manifest_path"
+rm -f "$raw_output_path"
 EOF
-        rm -f "$raw_manifest_path"
+        rm -f "$raw_output_path"
         return 1
     }
 
-    _cc_sync_normalize_manifest "$raw_manifest_path" "$manifest_path"
-    rm -f "$raw_manifest_path"
+    _cc_sync_normalize_list_file "$raw_output_path" "$output_path"
+    rm -f "$raw_output_path"
 }
 
-_cc_sync_prepare_bounded_manifest() {
+_cc_sync_prepare_list_file() {
     local direction="$1"
     local local_context_path="$2"
     local remote_host="$3"
     local remote_context_path="$4"
-    local selector_mode="$5"
-    local selector_value="$6"
-    local count
+    local find_args="$5"
+    local file_count
 
-    bounded_manifest_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-manifest.XXXXXX") || return 1
+    list_file_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-list-file.XXXXXX") || return 1
 
     case "$direction" in
     to)
-        _cc_sync_write_local_manifest "$local_context_path" "$bounded_manifest_path" "$selector_mode" "$selector_value" || {
-            rm -f "$bounded_manifest_path"
-            bounded_manifest_path=""
+        _cc_sync_write_local_list_file "$local_context_path" "$list_file_path" "$find_args" || {
+            rm -f "$list_file_path"
+            list_file_path=""
             return 1
         }
         ;;
     from)
-        _cc_sync_write_remote_manifest "$remote_host" "$remote_context_path" "$bounded_manifest_path" "$selector_mode" "$selector_value" || {
-            rm -f "$bounded_manifest_path"
-            bounded_manifest_path=""
+        _cc_sync_write_remote_list_file "$remote_host" "$remote_context_path" "$list_file_path" "$find_args" || {
+            rm -f "$list_file_path"
+            list_file_path=""
             return 1
         }
         ;;
     *)
         echo "Unsupported sync direction: $direction"
-        rm -f "$bounded_manifest_path"
-        bounded_manifest_path=""
+        rm -f "$list_file_path"
+        list_file_path=""
         return 1
         ;;
     esac
 
-    count=$(wc -l < "$bounded_manifest_path")
-    bounded_manifest_count="${count//[[:space:]]/}"
+    file_count=$(wc -l < "$list_file_path")
+    file_count="${file_count//[[:space:]]/}"
 
-    echo "Selected ${bounded_manifest_count} files:"
-    cat "$bounded_manifest_path"
+    echo "Selected ${file_count} files:"
+    cat "$list_file_path"
 
-    if [ "$bounded_manifest_count" -eq 0 ]; then
+    if [ "$file_count" -eq 0 ]; then
         echo "Nothing matched. Nothing to sync."
-        rm -f "$bounded_manifest_path"
-        bounded_manifest_path=""
+        rm -f "$list_file_path"
+        list_file_path=""
         return 2
     fi
 }
 
-_cc_sync_cleanup_bounded_manifest() {
-    if [ -n "$bounded_manifest_path" ]; then
-        rm -f "$bounded_manifest_path"
-        bounded_manifest_path=""
+_cc_sync_cleanup_list_file() {
+    if [ -n "$list_file_path" ]; then
+        rm -f "$list_file_path"
+        list_file_path=""
     fi
 }
 
@@ -352,8 +324,7 @@ _cc_sync_parse_dispatch_args() {
     rsync_options=()
     dry_run=false
     remote_spec=""
-    bounded_selector_mode=""
-    bounded_selector_value=""
+    find_args=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -391,8 +362,8 @@ _cc_sync_parse_dispatch_args() {
             shift
             ;;
         --modified-within)
-            if [ -n "$bounded_selector_mode" ]; then
-                echo "Bounded sync selectors are mutually exclusive."
+            if [ -n "$find_args" ]; then
+                echo "Only one file selection option may be specified."
                 return 1
             fi
             if [ $# -lt 2 ]; then
@@ -400,21 +371,19 @@ _cc_sync_parse_dispatch_args() {
                 return 1
             fi
             _cc_sync_validate_modified_within_days "$2" || return 1
-            bounded_selector_mode="modified_within_days"
-            bounded_selector_value="$2"
+            find_args="-type f -mtime -$2"
             shift 2
             ;;
         --find-args)
-            if [ -n "$bounded_selector_mode" ]; then
-                echo "Bounded sync selectors are mutually exclusive."
+            if [ -n "$find_args" ]; then
+                echo "Only one file selection option may be specified."
                 return 1
             fi
             if [ $# -lt 2 ]; then
                 echo "--find-args requires a value."
                 return 1
             fi
-            bounded_selector_mode="find_args"
-            bounded_selector_value="$2"
+            find_args="$2"
             shift 2
             ;;
         *)
@@ -463,7 +432,7 @@ _cc_sync_run_from() {
     shift 6
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
-    local bounded_result
+    local result
 
     _cc_sync_set_remote_context_vars "$remote_host" "$relative_path" || return 1
 
@@ -480,13 +449,13 @@ _cc_sync_run_from() {
     echo "Local context directory: $local_context_path"
     echo ""
 
-    if [ -n "$bounded_selector_mode" ]; then
-        _cc_sync_prepare_bounded_manifest from "$local_context_path" "$remote_host" "$remote_context_path" "$bounded_selector_mode" "$bounded_selector_value"
-        bounded_result=$?
+    if [ -n "$find_args" ]; then
+        _cc_sync_prepare_list_file from "$local_context_path" "$remote_host" "$remote_context_path" "$find_args"
+        result=$?
 
-        case "$bounded_result" in
+        case "$result" in
         0)
-            rsync_options+=("--files-from=$bounded_manifest_path")
+            rsync_options+=("--files-from=$list_file_path")
             ;;
         2)
             return 0
@@ -500,7 +469,7 @@ _cc_sync_run_from() {
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ -d "$local_context_path" ]; then
             _cc_sync_backup "$local_context_path" "$local_context_dir" "$backup_dir" || {
-                _cc_sync_cleanup_bounded_manifest
+                _cc_sync_cleanup_list_file
                 return 1
             }
             echo ""
@@ -514,7 +483,7 @@ _cc_sync_run_from() {
     fi
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
     local rsync_status=$?
-    _cc_sync_cleanup_bounded_manifest
+    _cc_sync_cleanup_list_file
     [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
@@ -530,7 +499,7 @@ _cc_sync_run_to() {
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
     local remote_context_exists=false
-    local bounded_result
+    local result
 
     if [ ! -d "$local_context_path" ]; then
         echo "$local_context_path does not exist on this machine"
@@ -554,13 +523,13 @@ _cc_sync_run_to() {
     echo "Local context directory: $local_context_path"
     echo ""
 
-    if [ -n "$bounded_selector_mode" ]; then
-        _cc_sync_prepare_bounded_manifest to "$local_context_path" "$remote_host" "$remote_context_path" "$bounded_selector_mode" "$bounded_selector_value"
-        bounded_result=$?
+    if [ -n "$find_args" ]; then
+        _cc_sync_prepare_list_file to "$local_context_path" "$remote_host" "$remote_context_path" "$find_args"
+        result=$?
 
-        case "$bounded_result" in
+        case "$result" in
         0)
-            rsync_options+=("--files-from=$bounded_manifest_path")
+            rsync_options+=("--files-from=$list_file_path")
             ;;
         2)
             return 0
@@ -574,7 +543,7 @@ _cc_sync_run_to() {
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ "$remote_context_exists" = true ]; then
             _cc_sync_remote_backup "$remote_host" "$remote_context_dir" || {
-                _cc_sync_cleanup_bounded_manifest
+                _cc_sync_cleanup_list_file
                 return 1
             }
             echo ""
@@ -588,14 +557,14 @@ _cc_sync_run_to() {
     fi
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
     local rsync_status=$?
-    _cc_sync_cleanup_bounded_manifest
+    _cc_sync_cleanup_list_file
     [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
 
 cc-sync() {
     local dispatch_command rsync_options dry_run remote_spec
-    local bounded_selector_mode bounded_selector_value bounded_manifest_path bounded_manifest_count
+    local find_args list_file_path
     local backup_dir current_dir local_context_dir local_context_path
     local sync_mode remote_host relative_path
 
@@ -615,8 +584,8 @@ cc-sync() {
 
     case $dispatch_command in
     backup | restore | pop)
-        if [ -n "$bounded_selector_mode" ]; then
-            echo "Bounded sync options are only supported with from/to."
+        if [ -n "$find_args" ]; then
+            echo "File selection is only supported with from/to."
             return 1
         fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
@@ -641,8 +610,8 @@ cc-sync() {
         esac
         ;;
     list | ls)
-        if [ -n "$bounded_selector_mode" ]; then
-            echo "Bounded sync options are only supported with from/to."
+        if [ -n "$find_args" ]; then
+            echo "File selection is only supported with from/to."
             return 1
         fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
