@@ -47,7 +47,7 @@ As with `cc-sync [from]`, the remote relative path can be specified.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
-### Selecting what files from the source are synced
+### Limiting what files are copied from `rsync` source
 
 - `--find-args '<expression>'` invokes `rsync --files-from <list>` with the output of `find <expression>`
 - `--modified-within <days>` is an alias for `--find-args '-type f -mtime -<days>'`
