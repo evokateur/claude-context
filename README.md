@@ -49,10 +49,9 @@ A backup of existing destination context is created before syncing when files wo
 
 ### Selecting what files from the source are synced
 
-- `--find-args '<expression>'` writes the output of `find <expression>` to `/tmp` for `rsync --files-from <file-list>`
-- `--modified-within <days>` is equivalent to `--find-args '-type f -mtime -<days>'`
-- `--modified-within` and `--find-args` are mutually exclusive
-- `--delete` with either will *not* delete files not in the `find` output
+- `--find-args '<expression>'` invokes `rsync --files-from <list>` with the output of `find <expression>`
+- `--modified-within <days>` is an alias for `--find-args '-type f -mtime -<days>'`
+- Combining `--delete` with either will *not* delete unselected destination files.
 
 Examples:
 
