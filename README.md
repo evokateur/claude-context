@@ -2,7 +2,7 @@
 
 Shell functions for syncing and backing up Claude Code project context across machines.
 
-## Syncing contexts between machines
+## Syncing context between machines
 
 `cc-sync` (or `cc-sync from`) syncs the context for the CWD in `~/.claude/projects` from a remote.
 
@@ -43,9 +43,22 @@ To sync the local context to a remote:
 
 As with `cc-sync [from]`, the remote relative path can be specified.
 
-`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option will clobber the destination with the source.
+`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option (*without* `--find-args`, see below) will clobber the destination with the source.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
+
+### Selecting what files to sync with `find` arguments
+
+- `--find-args '<expression>'` invokes `rsync --files-from <list>` with the output of `find <expression>`
+- `--modified-within <days>` is an alias for `--find-args '-type f -mtime -<days>'`
+- Combining `--delete` with either will *not* delete unselected destination files.
+
+Examples:
+
+```sh
+~/code/catbutt$ cc-sync --modified-within 3 xicamatl
+~/code/catbutt$ cc-sync to --find-args "-type f -name '*.jsonl'" --dry-run xicamatl
+```
 
 ## Listing context directory contents
 
@@ -62,6 +75,9 @@ A backup of existing destination context is created before syncing when files wo
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: clobber the destination, removing context not present in the source
     - `-z`, `--compress`: compress data during transfer
+  - File selection options:
+    - `--modified-within <days>`: select regular files matching `find . -type f -mtime -<days>`
+    - `--find-args '<expression>'`: select files using `find . <expression>`
   - Local context directory determined by CWD
   - Remote context determined by the same relative path unless `:path` is specified
   - If `from` or `to` is omitted, `from` is assumed

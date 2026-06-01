@@ -167,11 +167,164 @@ _cc_sync_has_files_to_sync() {
     [ "$count" -gt 0 ]
 }
 
+_cc_sync_validate_modified_within_days() {
+    case "$1" in
+    '' | *[!0-9]*)
+        echo "--modified-within requires a positive integer."
+        return 1
+        ;;
+    0)
+        echo "--modified-within requires a positive integer."
+        return 1
+        ;;
+    esac
+}
+
+_cc_sync_normalize_list_file() {
+    local input_path="$1"
+    local output_path="$2"
+    local base_path="${3:-}"
+    local relative_path
+
+    : >"$output_path"
+
+    while IFS= read -r relative_path; do
+        relative_path="${relative_path#./}"
+
+        if [ -z "$relative_path" ]; then
+            continue
+        fi
+
+        if [ -n "$base_path" ] && [ ! -f "$base_path/$relative_path" ]; then
+            continue
+        fi
+
+        printf '%s\n' "$relative_path" >>"$output_path"
+    done <"$input_path"
+}
+
+_cc_sync_write_local_list_file() {
+    local context_path="$1"
+    local output_path="$2"
+    local find_args="$3"
+    local raw_output_path
+
+    raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-local-find.XXXXXX") || return 1
+
+    (
+        cd "$context_path" || exit 1
+        eval "find . ${find_args}"
+    ) >"$raw_output_path" || {
+        rm -f "$raw_output_path"
+        return 1
+    }
+
+    _cc_sync_normalize_list_file "$raw_output_path" "$output_path" "$context_path"
+    rm -f "$raw_output_path"
+}
+
+_cc_sync_write_remote_list_file() {
+    local remote_host="$1"
+    local remote_context_path="$2"
+    local output_path="$3"
+    local find_args="$4"
+    local raw_output_path
+
+    raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || return 1
+
+    ssh "$remote_host" sh -s -- "$remote_context_path" "$find_args" <<'EOF' >"$raw_output_path" || {
+context_path="$1"
+find_args="$2"
+raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || exit 1
+
+cd "$context_path" || exit 1
+
+eval "find . ${find_args}" > "$raw_output_path"
+
+while IFS= read -r relative_path; do
+    relative_path="${relative_path#./}"
+
+    if [ -z "$relative_path" ]; then
+        continue
+    fi
+
+    if [ ! -f "$relative_path" ]; then
+        continue
+    fi
+
+    printf '%s\n' "$relative_path"
+done < "$raw_output_path"
+
+rm -f "$raw_output_path"
+EOF
+        rm -f "$raw_output_path"
+        return 1
+    }
+
+    _cc_sync_normalize_list_file "$raw_output_path" "$output_path"
+    rm -f "$raw_output_path"
+}
+
+_cc_sync_prepare_list_file() {
+    local direction="$1"
+    local local_context_path="$2"
+    local remote_host="$3"
+    local remote_context_path="$4"
+    local find_args="$5"
+    local file_count
+
+    list_file_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-list-file.XXXXXX") || return 1
+
+    case "$direction" in
+    to)
+        _cc_sync_write_local_list_file "$local_context_path" "$list_file_path" "$find_args" || {
+            rm -f "$list_file_path"
+            list_file_path=""
+            return 1
+        }
+        ;;
+    from)
+        _cc_sync_write_remote_list_file "$remote_host" "$remote_context_path" "$list_file_path" "$find_args" || {
+            rm -f "$list_file_path"
+            list_file_path=""
+            return 1
+        }
+        ;;
+    *)
+        echo "Unsupported sync direction: $direction"
+        rm -f "$list_file_path"
+        list_file_path=""
+        return 1
+        ;;
+    esac
+
+    file_count=$(wc -l <"$list_file_path")
+    file_count="${file_count//[[:space:]]/}"
+
+    echo "Selected ${file_count} files:"
+    cat "$list_file_path"
+
+    if [ "$file_count" -eq 0 ]; then
+        echo "Nothing matched. Nothing to sync."
+        rm -f "$list_file_path"
+        list_file_path=""
+        return 2
+    fi
+}
+
+_cc_sync_cleanup_list_file() {
+    if [ -n "$list_file_path" ]; then
+        rm -f "$list_file_path"
+        list_file_path=""
+    fi
+}
+
 _cc_sync_parse_dispatch_args() {
     dispatch_command=""
     rsync_options=()
     dry_run=false
     remote_spec=""
+    find_args=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -207,6 +360,31 @@ _cc_sync_parse_dispatch_args() {
         --delete | -z | --compress)
             rsync_options+=("$1")
             shift
+            ;;
+        --modified-within)
+            if [ -n "$find_args" ]; then
+                echo "Only one file selection option may be specified."
+                return 1
+            fi
+            if [ $# -lt 2 ]; then
+                echo "--modified-within requires a value."
+                return 1
+            fi
+            _cc_sync_validate_modified_within_days "$2" || return 1
+            find_args="-type f -mtime -$2"
+            shift 2
+            ;;
+        --find-args)
+            if [ -n "$find_args" ]; then
+                echo "Only one file selection option may be specified."
+                return 1
+            fi
+            if [ $# -lt 2 ]; then
+                echo "--find-args requires a value."
+                return 1
+            fi
+            find_args="$2"
+            shift 2
             ;;
         *)
             if [ -n "$remote_spec" ]; then
@@ -254,6 +432,7 @@ _cc_sync_run_from() {
     shift 6
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
+    local result
 
     _cc_sync_set_remote_context_vars "$remote_host" "$relative_path" || return 1
 
@@ -270,9 +449,29 @@ _cc_sync_run_from() {
     echo "Local context directory: $local_context_path"
     echo ""
 
+    if [ -n "$find_args" ]; then
+        _cc_sync_prepare_list_file from "$local_context_path" "$remote_host" "$remote_context_path" "$find_args"
+        result=$?
+
+        case "$result" in
+        0)
+            rsync_options+=("--files-from=$list_file_path")
+            ;;
+        2)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+        esac
+    fi
+
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ -d "$local_context_path" ]; then
-            _cc_sync_backup "$local_context_path" "$local_context_dir" "$backup_dir" || return 1
+            _cc_sync_backup "$local_context_path" "$local_context_dir" "$backup_dir" || {
+                _cc_sync_cleanup_list_file
+                return 1
+            }
             echo ""
         fi
     fi
@@ -283,6 +482,9 @@ _cc_sync_run_from() {
         echo "Syncing from $remote_host..."
     fi
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
+    local rsync_status=$?
+    _cc_sync_cleanup_list_file
+    [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
 
@@ -297,6 +499,7 @@ _cc_sync_run_to() {
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
     local remote_context_exists=false
+    local result
 
     if [ ! -d "$local_context_path" ]; then
         echo "$local_context_path does not exist on this machine"
@@ -320,9 +523,29 @@ _cc_sync_run_to() {
     echo "Local context directory: $local_context_path"
     echo ""
 
+    if [ -n "$find_args" ]; then
+        _cc_sync_prepare_list_file to "$local_context_path" "$remote_host" "$remote_context_path" "$find_args"
+        result=$?
+
+        case "$result" in
+        0)
+            rsync_options+=("--files-from=$list_file_path")
+            ;;
+        2)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+        esac
+    fi
+
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
         if [ "$remote_context_exists" = true ]; then
-            _cc_sync_remote_backup "$remote_host" "$remote_context_dir" || return 1
+            _cc_sync_remote_backup "$remote_host" "$remote_context_dir" || {
+                _cc_sync_cleanup_list_file
+                return 1
+            }
             echo ""
         fi
     fi
@@ -333,11 +556,15 @@ _cc_sync_run_to() {
         echo "Syncing to $remote_host..."
     fi
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
+    local rsync_status=$?
+    _cc_sync_cleanup_list_file
+    [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
 
 cc-sync() {
     local dispatch_command rsync_options dry_run remote_spec
+    local find_args list_file_path
     local backup_dir current_dir local_context_dir local_context_path
     local sync_mode remote_host relative_path
 
@@ -357,6 +584,10 @@ cc-sync() {
 
     case $dispatch_command in
     backup | restore | pop)
+        if [ -n "$find_args" ]; then
+            echo "File selection is only supported for sync operations."
+            return 1
+        fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
             echo "Unexpected rsync option."
             return 1
@@ -379,6 +610,10 @@ cc-sync() {
         esac
         ;;
     list | ls)
+        if [ -n "$find_args" ]; then
+            echo "File selection is only supported for sync operations."
+            return 1
+        fi
         if [ "${#rsync_options[@]}" -gt 0 ]; then
             echo "Unexpected rsync option."
             return 1
