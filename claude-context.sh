@@ -229,10 +229,14 @@ _cc_sync_write_remote_list_file() {
     local output_path="$3"
     local find_args="$4"
     local raw_output_path
+    local quoted_context_path quoted_find_args
 
     raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || return 1
 
-    ssh "$remote_host" sh -s -- "$remote_context_path" "$find_args" <<'EOF' >"$raw_output_path" || {
+    quoted_context_path=$(printf '%q' "$remote_context_path")
+    quoted_find_args=$(printf '%q' "$find_args")
+
+    ssh "$remote_host" "sh -s -- $quoted_context_path $quoted_find_args" <<'EOF' >"$raw_output_path" || {
 context_path="$1"
 find_args="$2"
 raw_output_path=$(mktemp "${TMPDIR:-/tmp}/cc-sync-remote-find.XXXXXX") || exit 1
