@@ -1,5 +1,5 @@
 _cc_sync_context_dir_for_path() {
-    echo "$1" | sed 's/\//-/g'
+    echo "$1" | sed 's/[\/.]/-/g'
 }
 
 _cc_sync_set_vars() {
