@@ -64,9 +64,9 @@ Examples:
 
 `cc-sync list` shows the local context directory for the CWD with `ls -l -t`.
 
-`cc-sync list host` shows the matching remote context directory with `ls -l -t`.
+`cc-sync list <host>` shows the matching remote context directory with `ls -l -t`.
 
-`cc-sync ls` and `cc-sync ls host` are aliases for the same commands.
+`cc-sync ls` and `cc-sync ls <host>` are aliases for the same commands.
 
 ## Functions
 
