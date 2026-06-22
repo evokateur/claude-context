@@ -66,7 +66,7 @@ Examples:
 
 `cc-sync list <host>` shows the matching remote context directory with `ls -l -t`.
 
-`cc-sync ls` and `cc-sync ls <host>` are aliases for the same commands.
+`cc-sync ls` & `cc-sync ls <host>`: same as above
 
 ## Functions
 
