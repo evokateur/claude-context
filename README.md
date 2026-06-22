@@ -19,7 +19,10 @@ Context for the same relative path on the remote is assumed:
 
 ```sh
 ~/code/catbutt$ cc-sync xicamatl 
-# same as:
+```
+
+.. is the same as:
+```
 ~/code/catbutt$ cc-sync xicamatl:code/catbutt
 ```
 
@@ -35,7 +38,7 @@ A relative path can be used with `localhost` to retrieve the context of a rename
 ~/code/cul-de-chat$ cc-sync localhost:code/catbutt
 ```
 
-To sync the local context to a remote:
+To sync the local context *to* a remote:
 
 ```sh
 ~/code/catbutt$ cc-sync to xicamatl
