@@ -134,7 +134,10 @@ _cc_sync_pop() {
     fi
 
     echo "Extracting backup..."
-    tar zxf "$latest_backup" -C "$HOME/.claude/projects/"
+    if ! tar zxf "$latest_backup" -C "$HOME/.claude/projects/"; then
+        echo "Extraction failed. Keeping backup: $latest_backup"
+        return 1
+    fi
 
     if [ "$delete_backup" = true ]; then
         echo "Removing backup: $latest_backup"
