@@ -54,7 +54,7 @@ The auto memory entrypoint, `memory/MEMORY.md`, will be merged rather than rsync
 
 Using the `--delete` option (*without* `--find-args`, see below) will essentially clobber the destination with the source.
 
-A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
+A backup of existing destination context, when it will be affected, is created before syncing, except with `--dry-run`.
 
 ### Selecting what files to sync with `find` arguments
 
