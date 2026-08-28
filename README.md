@@ -48,13 +48,13 @@ As with `cc-sync [from]`, the remote relative path can be specified.
 
 `cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines.
 
-In addition, the `--update` option, skipping newer files at the destination, is used implicitly unless `--delete` is specified. 
+Newer files at the destination will be skipped (with `--update`) unless `--delete` is specified. 
 
-Using the `--delete` option (*without* `--find-args`, see below) will clobber the destination with the source.
+The auto memory entrypoint, `memory/MEMORY.md`, will be merged rather than rsynced unless `--delete` is specified.
+
+Using the `--delete` option (*without* `--find-args`, see below) will essentially clobber the destination with the source.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
-
-The auto memory entrypoint, `memory/MEMORY.md`, is merged whenever it is affected by a sync, unless it is being overwritten with the `--delete` option.
 
 ### Selecting what files to sync with `find` arguments
 
