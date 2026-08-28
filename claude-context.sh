@@ -327,6 +327,7 @@ _cc_sync_parse_dispatch_args() {
     dispatch_command=""
     rsync_options=()
     dry_run=false
+    delete=false
     remote_spec=""
     find_args=""
 
@@ -361,7 +362,12 @@ _cc_sync_parse_dispatch_args() {
             rsync_options+=("$1")
             shift
             ;;
-        --delete | -z | --compress)
+        --delete)
+            delete=true
+            rsync_options+=("$1")
+            shift
+            ;;
+        -z | --compress)
             rsync_options+=("$1")
             shift
             ;;
@@ -567,7 +573,7 @@ _cc_sync_run_to() {
 }
 
 cc-sync() {
-    local dispatch_command rsync_options dry_run remote_spec
+    local dispatch_command rsync_options dry_run delete remote_spec
     local find_args list_file_path
     local backup_dir current_dir local_context_dir local_context_path
     local sync_mode remote_host relative_path
@@ -632,6 +638,9 @@ cc-sync() {
         ;;
     "" | from | to)
         _cc_sync_set_vars || return 1
+        if [ "$delete" = false ]; then
+            rsync_options+=("-u")
+        fi
         sync_mode="$dispatch_command"
         if [ -z "$sync_mode" ]; then
             sync_mode="from"

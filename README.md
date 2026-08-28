@@ -46,7 +46,7 @@ To sync the local context *to* a remote:
 
 As with `cc-sync [from]`, the remote relative path can be specified.
 
-`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines. Using the `--delete` option (*without* `--find-args`, see below) will clobber the destination with the source.
+`cc-sync [from]` and `cc-sync to` are `rsync` wrappers. By default `rsync` commands are additive, consolidating context across machines and preserving destination files that are newer than the source. Using the `--delete` option (*without* `--find-args`, see below) will clobber the destination with the source, including newer destination files.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
@@ -74,7 +74,7 @@ Examples:
 ## Functions
 
 - `cc-sync [from|to] [rsync-options] <host[:path]>`
-  - Wraps `rsync -av` with passthrough of the following options:
+  - Wraps `rsync -avu` by default, or `rsync -av` with `--delete`, with passthrough of the following options:
     - `--dry-run`, `-n`: preview what would be transferred
     - `--delete`: clobber the destination, removing context not present in the source
     - `-z`, `--compress`: compress data during transfer
