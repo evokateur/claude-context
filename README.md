@@ -50,6 +50,8 @@ As with `cc-sync [from]`, the remote relative path can be specified.
 
 A backup of existing destination context is created before syncing when files would be transferred, except with `--dry-run`.
 
+The auto memory entrypoint, `memory/MEMORY.md`, is merged whenever it is affected by a sync, unless it is being overwritten with the `--delete` option.
+
 ### Selecting what files to sync with `find` arguments
 
 - `--find-args '<expression>'` invokes `rsync --files-from <list>` with the output of `find <expression>`

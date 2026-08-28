@@ -323,6 +323,117 @@ _cc_sync_cleanup_list_file() {
     fi
 }
 
+_cc_sync_cleanup_memory_merge() {
+    if [ -n "$memory_merge_dir" ]; then
+        rm -rf "$memory_merge_dir"
+        memory_merge_dir=""
+    fi
+}
+
+_cc_sync_should_merge_memory() {
+    local delete="$1"
+    local find_args="$2"
+    local list_file_path="$3"
+
+    if [ -z "$find_args" ]; then
+        [ "$delete" = false ]
+        return
+    fi
+
+    grep -Fxq 'memory/MEMORY.md' "$list_file_path"
+}
+
+_cc_sync_remove_memory_from_list() {
+    local list_file_path="$1"
+    local filtered_file
+
+    filtered_file=$(mktemp "${TMPDIR:-/tmp}/cc-sync-list-filtered.XXXXXX") || return 1
+    awk '$0 != "memory/MEMORY.md"' "$list_file_path" >"$filtered_file"
+    mv "$filtered_file" "$list_file_path"
+}
+
+_cc_sync_merge_memory_files() {
+    local target_file="$1"
+    local source_file="$2"
+    local merged_file="$3"
+
+    awk '!seen[$0]++' "$target_file" "$source_file" >"$merged_file"
+}
+
+_cc_sync_prepare_memory_merge() {
+    local direction="$1"
+    local local_context_path="$2"
+    local remote_host="$3"
+    local remote_context_path="$4"
+    local local_memory_path="$local_context_path/memory/MEMORY.md"
+    local remote_memory_path="$remote_context_path/memory/MEMORY.md"
+
+    case "$direction" in
+    from)
+        if ! ssh "$remote_host" "test -f '$remote_memory_path'" 2>/dev/null; then
+            return 2
+        fi
+        ;;
+    to)
+        if [ ! -f "$local_memory_path" ]; then
+            return 2
+        fi
+        ;;
+    esac
+
+    memory_merge_dir=$(mktemp -d "${TMPDIR:-/tmp}/cc-sync-memory.XXXXXX") || return 1
+    memory_source_file="$memory_merge_dir/source"
+    memory_target_file="$memory_merge_dir/target"
+    memory_merged_file="$memory_merge_dir/merged"
+
+    case "$direction" in
+    from)
+        rsync -aq "${remote_host}:${remote_memory_path}" "$memory_source_file" || return 1
+        if [ -f "$local_memory_path" ]; then
+            cp "$local_memory_path" "$memory_target_file" || return 1
+        fi
+        ;;
+    to)
+        cp "$local_memory_path" "$memory_source_file" || return 1
+        if ssh "$remote_host" "test -f '$remote_memory_path'" 2>/dev/null; then
+            rsync -aq "${remote_host}:${remote_memory_path}" "$memory_target_file" || return 1
+        fi
+        ;;
+    esac
+
+    if [ -f "$memory_target_file" ]; then
+        _cc_sync_merge_memory_files "$memory_target_file" "$memory_source_file" "$memory_merged_file" || return 1
+        if cmp -s "$memory_target_file" "$memory_merged_file"; then
+            memory_merge_changes_target=false
+        else
+            memory_merge_changes_target=true
+        fi
+    else
+        cp "$memory_source_file" "$memory_merged_file" || return 1
+        memory_merge_changes_target=true
+    fi
+
+    chmod 644 "$memory_merged_file"
+}
+
+_cc_sync_install_memory_merge() {
+    local direction="$1"
+    local local_context_path="$2"
+    local remote_host="$3"
+    local remote_context_path="$4"
+
+    case "$direction" in
+    from)
+        mkdir -p "$local_context_path/memory" || return 1
+        cp "$memory_merged_file" "$local_context_path/memory/MEMORY.md"
+        ;;
+    to)
+        ssh "$remote_host" "mkdir -p '$remote_context_path/memory'" || return 1
+        rsync -aq "$memory_merged_file" "${remote_host}:${remote_context_path}/memory/MEMORY.md"
+        ;;
+    esac
+}
+
 _cc_sync_parse_dispatch_args() {
     dispatch_command=""
     rsync_options=()
@@ -439,9 +550,12 @@ _cc_sync_run_from() {
     local local_context_dir="$4"
     local backup_dir="$5"
     local dry_run="$6"
-    shift 6
+    local delete="$7"
+    shift 7
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
+    local files_to_sync=false
+    local merge_memory=false
     local result
 
     _cc_sync_set_remote_context_vars "$remote_host" "$relative_path" || return 1
@@ -476,14 +590,55 @@ _cc_sync_run_from() {
         esac
     fi
 
+    if [ "$dry_run" = false ] && _cc_sync_should_merge_memory "$delete" "$find_args" "$list_file_path"; then
+        _cc_sync_prepare_memory_merge from "$local_context_path" "$remote_host" "$remote_context_path"
+        result=$?
+
+        case "$result" in
+        0)
+            merge_memory=true
+            if [ -n "$find_args" ]; then
+                _cc_sync_remove_memory_from_list "$list_file_path" || {
+                    _cc_sync_cleanup_list_file
+                    _cc_sync_cleanup_memory_merge
+                    return 1
+                }
+            else
+                rsync_options+=("--exclude=memory/MEMORY.md")
+            fi
+            ;;
+        2) ;;
+        *)
+            _cc_sync_cleanup_list_file
+            _cc_sync_cleanup_memory_merge
+            return 1
+            ;;
+        esac
+    fi
+
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
+        files_to_sync=true
+    fi
+
+    if [ "$dry_run" = false ] && { [ "$files_to_sync" = true ] || { [ "$merge_memory" = true ] && [ "$memory_merge_changes_target" = true ]; }; }; then
         if [ -d "$local_context_path" ]; then
             _cc_sync_backup "$local_context_path" "$local_context_dir" "$backup_dir" || {
                 _cc_sync_cleanup_list_file
+                _cc_sync_cleanup_memory_merge
                 return 1
             }
             echo ""
         fi
+    fi
+
+    if [ "$merge_memory" = true ] && [ "$memory_merge_changes_target" = true ]; then
+        echo "Merging memory/MEMORY.md into local context..."
+        _cc_sync_install_memory_merge from "$local_context_path" "$remote_host" "$remote_context_path" || {
+            _cc_sync_cleanup_list_file
+            _cc_sync_cleanup_memory_merge
+            return 1
+        }
+        echo ""
     fi
 
     if [ "$dry_run" = true ]; then
@@ -494,6 +649,7 @@ _cc_sync_run_from() {
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
     local rsync_status=$?
     _cc_sync_cleanup_list_file
+    _cc_sync_cleanup_memory_merge
     [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
@@ -505,9 +661,12 @@ _cc_sync_run_to() {
     local local_context_dir="$4"
     local backup_dir="$5"
     local dry_run="$6"
-    shift 6
+    local delete="$7"
+    shift 7
     local rsync_options=("$@")
     local remote_context_dir remote_context_path sync_source sync_destination
+    local files_to_sync=false
+    local merge_memory=false
     local remote_context_exists=false
     local result
 
@@ -550,14 +709,55 @@ _cc_sync_run_to() {
         esac
     fi
 
+    if [ "$dry_run" = false ] && _cc_sync_should_merge_memory "$delete" "$find_args" "$list_file_path"; then
+        _cc_sync_prepare_memory_merge to "$local_context_path" "$remote_host" "$remote_context_path"
+        result=$?
+
+        case "$result" in
+        0)
+            merge_memory=true
+            if [ -n "$find_args" ]; then
+                _cc_sync_remove_memory_from_list "$list_file_path" || {
+                    _cc_sync_cleanup_list_file
+                    _cc_sync_cleanup_memory_merge
+                    return 1
+                }
+            else
+                rsync_options+=("--exclude=memory/MEMORY.md")
+            fi
+            ;;
+        2) ;;
+        *)
+            _cc_sync_cleanup_list_file
+            _cc_sync_cleanup_memory_merge
+            return 1
+            ;;
+        esac
+    fi
+
     if [ "$dry_run" = false ] && _cc_sync_has_files_to_sync "${rsync_options[@]}" "$sync_source" "$sync_destination"; then
+        files_to_sync=true
+    fi
+
+    if [ "$dry_run" = false ] && { [ "$files_to_sync" = true ] || { [ "$merge_memory" = true ] && [ "$memory_merge_changes_target" = true ]; }; }; then
         if [ "$remote_context_exists" = true ]; then
             _cc_sync_remote_backup "$remote_host" "$remote_context_dir" || {
                 _cc_sync_cleanup_list_file
+                _cc_sync_cleanup_memory_merge
                 return 1
             }
             echo ""
         fi
+    fi
+
+    if [ "$merge_memory" = true ] && [ "$memory_merge_changes_target" = true ]; then
+        echo "Merging memory/MEMORY.md into remote context..."
+        _cc_sync_install_memory_merge to "$local_context_path" "$remote_host" "$remote_context_path" || {
+            _cc_sync_cleanup_list_file
+            _cc_sync_cleanup_memory_merge
+            return 1
+        }
+        echo ""
     fi
 
     if [ "$dry_run" = true ]; then
@@ -568,6 +768,7 @@ _cc_sync_run_to() {
     rsync -av "${rsync_options[@]}" "$sync_source" "$sync_destination"
     local rsync_status=$?
     _cc_sync_cleanup_list_file
+    _cc_sync_cleanup_memory_merge
     [ "$rsync_status" -eq 0 ] || return "$rsync_status"
     echo "Done."
 }
@@ -576,6 +777,8 @@ cc-sync() {
     local dispatch_command rsync_options dry_run delete remote_spec
     local find_args list_file_path
     local backup_dir current_dir local_context_dir local_context_path
+    local memory_merge_changes_target memory_merge_dir="" memory_merged_file
+    local memory_source_file memory_target_file
     local sync_mode remote_host relative_path
 
     if [ $# -eq 0 ]; then
@@ -654,10 +857,10 @@ cc-sync() {
         _cc_sync_set_remote_spec_vars "$current_dir" || return 1
         case $sync_mode in
         from)
-            _cc_sync_run_from "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "${rsync_options[@]}"
+            _cc_sync_run_from "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "$delete" "${rsync_options[@]}"
             ;;
         to)
-            _cc_sync_run_to "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "${rsync_options[@]}"
+            _cc_sync_run_to "$remote_host" "$relative_path" "$local_context_path" "$local_context_dir" "$backup_dir" "$dry_run" "$delete" "${rsync_options[@]}"
             ;;
         esac
         ;;
